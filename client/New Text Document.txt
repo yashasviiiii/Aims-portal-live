@@ -1,0 +1,3 @@
+MONGO_URI=mongodb+srv://yashasvichaudhary7985_db_user:9g1ivFviXM4YmmgI@cluster0.bta7q3q.mongodb.net/users?appName=Cluster0
+PORT=5000
+JWT_SECRET=supersecretkey123

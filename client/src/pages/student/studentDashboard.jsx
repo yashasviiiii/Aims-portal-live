@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import StudentNavbar from '../../components/studentNavbar';
 import axios from 'axios';
+import CoursesSection from '../../components/CoursesSection';
 
 const StudentDashboard = () => {
   const [roll, setRoll] = useState("Loading...");
@@ -68,13 +69,7 @@ const StudentDashboard = () => {
           </div>
         )}
 
-        {/* --- OTHER PANES (Placeholders) --- */}
-        {activeTab === "Courses" && (
-          <div className="text-center py-20 text-gray-400">
-            <h2 className="text-2xl font-bold mb-2">Courses</h2>
-            <p>Your course registrations will appear here.</p>
-          </div>
-        )}
+        {activeTab === "Courses" && <CoursesSection />}
 
         {activeTab === "Record" && (
           <div className="text-center py-20 text-gray-400">

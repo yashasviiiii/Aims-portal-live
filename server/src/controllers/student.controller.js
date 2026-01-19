@@ -1,4 +1,6 @@
-import Name from "../models/name.js"; // Match your model file exactly
+import Name from "../models/name.js";
+import Course from '../models/Course.js';
+import Enrollment from '../models/Enrollment.js'; 
 
 export const studentDashboard = async (req, res) => {
   try {
@@ -20,5 +22,41 @@ export const studentDashboard = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+// Get all courses and check if student is already enrolled
+export const getAllCourses = async (req, res) => {
+  try {
+    const courses = await Course.find();
+    const myEnrollments = await Enrollment.find({ studentId: req.userId });
+    
+    // Map courses to include a 'isCredited' flag
+    const coursesWithStatus = courses.map(course => {
+      const enrolled = myEnrollments.find(e => e.courseId.toString() === course._id.toString());
+      return { ...course._doc, isCredited: !!enrolled };
+    });
+
+    res.json(coursesWithStatus);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching courses" });
+  }
+};
+
+// Request to Credit/Enroll
+export const creditCourses = async (req, res) => {
+  try {
+    const { courseIds } = req.body; // Array of selected course IDs
+    
+    const enrollmentRequests = courseIds.map(id => ({
+      studentId: req.userId,
+      courseId: id,
+      status: 'pending'
+    }));
+
+    await Enrollment.insertMany(enrollmentRequests);
+    res.json({ message: "Request sent to instructor for approval" });
+  } catch (err) {
+    res.status(500).json({ message: "Enrollment failed" });
   }
 };

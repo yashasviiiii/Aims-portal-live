@@ -5,6 +5,7 @@ import {
 } from "../middleware/auth.middleware.js";
 import {
   instructorDashboard,
+  addCourse, // Add this
 } from "../controllers/instructor.controller.js";
 
 const router = express.Router();
@@ -14,6 +15,14 @@ router.get(
   verifyJWT,
   requireInstructor,
   instructorDashboard
+);
+
+// New route for adding courses
+router.post(
+  "/add-course",
+  verifyJWT,
+  requireInstructor,
+  addCourse
 );
 
 export default router;
