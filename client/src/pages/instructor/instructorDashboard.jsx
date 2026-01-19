@@ -99,7 +99,7 @@ const InstructorDashboard = () => {
               </div>
               <div className="col-span-1">
                 <label className="text-sm font-semibold">Credits</label>
-                <input name="credits" type="number" className="w-full p-2 border rounded" required />
+                <input name="credits" placeholder="3" type="number" className="w-full p-2 border rounded" required />
               </div>
               <div className="col-span-1">
                 <label className="text-sm font-semibold">Session</label>

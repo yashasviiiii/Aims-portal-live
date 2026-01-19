@@ -1,28 +1,16 @@
 import express from "express";
-import {
-  verifyJWT,
-  requireInstructor,
-} from "../middleware/auth.middleware.js";
-import {
-  instructorDashboard,
-  addCourse, // Add this
-} from "../controllers/instructor.controller.js";
+import { verifyJWT } from "../middleware/auth.middleware.js";
+import { 
+  studentDashboard, 
+  getAllCourses, 
+  creditCourses 
+} from "../controllers/student.controller.js";
 
 const router = express.Router();
 
-router.get(
-  "/dashboard",
-  verifyJWT,
-  requireInstructor,
-  instructorDashboard
-);
+router.get("/dashboard", verifyJWT, studentDashboard);
+router.get("/courses", verifyJWT, getAllCourses);
+router.post("/credit", verifyJWT, creditCourses);
 
-// New route for adding courses
-router.post(
-  "/add-course",
-  verifyJWT,
-  requireInstructor,
-  addCourse
-);
-
+// THIS IS THE MISSING LINE CAUSING THE ERROR:
 export default router;
