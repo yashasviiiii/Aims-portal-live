@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { login } from "../../api/auth";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,27 +12,45 @@ export default function Login() {
     e.preventDefault();
     localStorage.clear();
 
-    const res = await login({ email, password });
-    console.log("LOGIN RESPONSE 👉", res.data);
+    // 🔄 loading toast
+    const toastId = toast.loading("Logging in...");
 
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("role", res.data.role);
+    try {
+      const res = await login({ email, password });
 
-    const roleRoutes = {
-      ADMIN: "/admin",
-      STUDENT: "/student-dashboard",
-      FA: "/fa-dashboard",
-      COURSE_INSTRUCTOR: "/instructor-dashboard",
-    };
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
 
-    navigate(roleRoutes[res.data.role] || "/login");
+      const roleRoutes = {
+        ADMIN: "/admin",
+        STUDENT: "/student-dashboard",
+        FA: "/fa-dashboard",
+        COURSE_INSTRUCTOR: "/instructor-dashboard",
+      };
 
+      toast.success("Login successful", { id: toastId });
+
+      navigate(roleRoutes[res.data.role] || "/login");
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || "Invalid email or password",
+        { id: toastId }
+      );
+    }
   };
 
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600">
-      <div className="bg-white w-full max-w-md rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "url('/iitrpr.jpg')",
+      }}
+    >
+      {/* Glass Card */}
+      <div className="bg-white/20 backdrop-blur-lg border border-white/30 w-full max-w-md rounded-2xl shadow-xl p-8">
+        <h2 className="text-2xl font-bold text-white text-center mb-6">
           AIMS Portal Login
         </h2>
 
@@ -39,7 +58,7 @@ export default function Login() {
           <input
             type="email"
             placeholder="Institute Email"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 rounded-lg bg-white/80 focus:outline-none focus:ring-2 focus:ring-gray-800"
             onChange={(e) => setEmail(e.target.value)}
             required
           />
@@ -47,22 +66,22 @@ export default function Login() {
           <input
             type="password"
             placeholder="Password"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 rounded-lg bg-white/80 focus:outline-none focus:ring-2 focus:ring-gray-800"
             onChange={(e) => setPassword(e.target.value)}
             required
           />
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+            className="w-full bg-black text-white py-2 rounded-lg transition font-semibold"
           >
             Login
           </button>
         </form>
 
-        <p className="text-sm text-center text-gray-600 mt-4">
+        <p className="text-sm text-center text-white mt-4">
           Don’t have an account?{" "}
-          <Link to="/signup" className="text-indigo-600 font-semibold">
+          <Link to="/signup" className="text-gray-200 font-semibold">
             Signup
           </Link>
         </p>
