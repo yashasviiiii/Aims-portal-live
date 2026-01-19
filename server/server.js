@@ -9,6 +9,9 @@ import {
   requireFA,
   requireInstructor
 } from "./src/middleware/auth.middleware.js";
+import studentRoutes from "./src/routes/student.routes.js";
+import faRoutes from "./src/routes/fa.routes.js";
+import instructorRoutes from "./src/routes/instructor.routes.js";
 
 
 
@@ -22,6 +25,10 @@ app.use(cors());
 app.use(express.json());
 app.use("/api", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/student", studentRoutes);
+app.use("/api/fa", faRoutes);
+app.use("/api/instructor", instructorRoutes);
+
 
 
 app.get('/', (req, res) => {
