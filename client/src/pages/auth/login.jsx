@@ -12,6 +12,18 @@ const Login = () => {
 
     const data = await loginUser(email, password);
 
+    try {
+    const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+    
+    // SAVE BOTH TOKEN AND EMAIL
+    localStorage.setItem("token", res.data.token); 
+    localStorage.setItem("userEmail", email); // This is the backup for the dashboard
+    
+    navigate("/student-dashboard");
+  } catch (err) {
+    console.error("Login failed", err);
+  }
+
     if (data.message === "Login successful") {
       if (data.role === "STUDENT") {
         window.location.href = "/student-dashboard";
@@ -23,6 +35,8 @@ const Login = () => {
     } else {
       alert(data.message);
     }
+
+    
   };
 
   return (
