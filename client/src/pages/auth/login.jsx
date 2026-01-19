@@ -1,5 +1,29 @@
+import { useState } from "react";
+import { loginUser } from "../../api/auth";
+
 const Login = () => {
   const role = localStorage.getItem("selectedRole");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    const data = await loginUser(email, password);
+
+    if (data.message === "Login successful") {
+      if (data.role === "STUDENT") {
+        window.location.href = "/student-dashboard";
+      } else if (data.role === "FA") {
+        window.location.href = "/fa-dashboard";
+      } else if (data.role === "COURSE_INSTRUCTOR") {
+        window.location.href = "/instructor-dashboard";
+      }
+    } else {
+      alert(data.message);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -18,17 +42,21 @@ const Login = () => {
           </p>
         )}
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleLogin}>
           <input
             type="email"
             placeholder="Institute Email"
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
           <input
             type="password"
             placeholder="Password"
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
           <button

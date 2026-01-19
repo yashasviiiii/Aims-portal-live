@@ -1,59 +1,24 @@
-# ===============================
-# General
-# ===============================
-node_modules/
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# OS files
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
-
-# ===============================
-# Backend (Node / Express)
-# ===============================
-server/node_modules/
-server/.env
-server/dist/
-server/build/
-
-# ===============================
-# Frontend (React / Vite)
-# ===============================
-client/node_modules/
-client/dist/
-client/build/
-client/.env
-client/.env.local
-
-# Vite cache
-client/.vite/
-
-# ===============================
-# Editor / IDE
-# ===============================
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# ===============================
-# Testing / Coverage
-# ===============================
-coverage/
-
-# ===============================
-# Optional
-# ===============================
-*.pem
-*.key
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
