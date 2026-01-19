@@ -1,42 +1,97 @@
-const Signup = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+import { useState } from "react";
+import { signup } from "../../api/auth";
+import { useNavigate, Link } from "react-router-dom";
 
-        <h2 className="text-2xl font-bold text-center text-blue-600 mb-6">
-          Sign Up
+export default function Signup() {
+  const [form, setForm] = useState({});
+  const navigate = useNavigate();
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await signup(form);
+    navigate("/verify-otp", { state: { email: form.email } });
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600">
+      <div className="bg-white w-full max-w-lg rounded-xl shadow-lg p-8">
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+          Create Account
         </h2>
 
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
           <input
+            name="firstName"
+            placeholder="First Name"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="lastName"
+            placeholder="Last Name"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="email"
             type="email"
             placeholder="Institute Email"
-            className="w-full px-4 py-2 border rounded-lg"
+            className="input col-span-2"
+            onChange={handleChange}
+            required
           />
 
           <input
+            name="password"
             type="password"
             placeholder="Password"
-            className="w-full px-4 py-2 border rounded-lg"
+            className="input col-span-2"
+            onChange={handleChange}
+            required
           />
 
+          <select
+            name="role"
+            className="input col-span-2"
+            onChange={handleChange}
+            required
+          >
+            <option value="">Select Role</option>
+            <option value="STUDENT">Student</option>
+            <option value="FA">Faculty Advisor</option>
+            <option value="COURSE_INSTRUCTOR">Instructor</option>
+          </select>
+
           <input
-            type="password"
-            placeholder="Confirm Password"
-            className="w-full px-4 py-2 border rounded-lg"
+            name="department"
+            placeholder="Department"
+            className="input col-span-2"
+            onChange={handleChange}
+            required
           />
 
           <button
             type="submit"
-            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+            className="col-span-2 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
           >
-            Send OTP
+            Signup & Send OTP
           </button>
         </form>
 
+        <p className="text-sm text-center text-gray-600 mt-4">
+          Already have an account?{" "}
+          <Link to="/login" className="text-indigo-600 font-semibold">
+            Login
+          </Link>
+        </p>
       </div>
     </div>
   );
-};
-
-export default Signup;
+}

@@ -10,6 +10,16 @@ export const getPendingUsers = async (req, res) => {
   res.json(users);
 };
 
+export const getAllUsers = async (req, res) => {
+  const users = await Name.find({
+    accountStatus: "ACTIVE",
+    role: { $nin: ["STUDENT", "ADMIN"] },
+  }).select("-password -otp");
+
+  res.json(users);
+};
+
+
 // Approve user
 export const approveUser = async (req, res) => {
   await Name.findByIdAndUpdate(req.params.id, {

@@ -1,96 +1,72 @@
 import { useState } from "react";
-import { loginUser } from "../../api/auth";
+import { login } from "../../api/auth";
+import { useNavigate, Link } from "react-router-dom";
 
-const Login = () => {
-  const role = localStorage.getItem("selectedRole");
-
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    localStorage.clear();
 
-    const data = await loginUser(email, password);
+    const res = await login({ email, password });
+    console.log("LOGIN RESPONSE 👉", res.data);
 
-    try {
-    const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-    
-    // SAVE BOTH TOKEN AND EMAIL
-    localStorage.setItem("token", res.data.token); 
-    localStorage.setItem("userEmail", email); // This is the backup for the dashboard
-    
-    navigate("/student-dashboard");
-  } catch (err) {
-    console.error("Login failed", err);
-  }
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("role", res.data.role);
 
-    if (data.message === "Login successful") {
-      if (data.role === "STUDENT") {
-        window.location.href = "/student-dashboard";
-      } else if (data.role === "FA") {
-        window.location.href = "/fa-dashboard";
-      } else if (data.role === "COURSE_INSTRUCTOR") {
-        window.location.href = "/instructor-dashboard";
-      }
-    } else {
-      alert(data.message);
-    }
+    const roleRoutes = {
+      ADMIN: "/admin",
+      STUDENT: "/student-dashboard",
+      FA: "/fa-dashboard",
+      COURSE_INSTRUCTOR: "/instructor-dashboard",
+    };
 
-    
+    navigate(roleRoutes[res.data.role] || "/login");
+
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-
-        <h2 className="text-2xl font-bold text-center text-blue-600 mb-2">
-          Login
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600">
+      <div className="bg-white w-full max-w-md rounded-xl shadow-lg p-8">
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+          AIMS Portal Login
         </h2>
 
-        {role && (
-          <p className="text-center text-sm text-gray-500 mb-6">
-            Logging in as:{" "}
-            <span className="font-semibold">
-              {role.replace("_", " ")}
-            </span>
-          </p>
-        )}
-
-        <form className="space-y-4" onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="email"
             placeholder="Institute Email"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={email}
+            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           <input
             type="password"
             placeholder="Password"
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={password}
+            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
           >
             Login
           </button>
         </form>
 
-        <p className="text-sm text-center mt-4">
+        <p className="text-sm text-center text-gray-600 mt-4">
           Don’t have an account?{" "}
-          <a href="/signup" className="text-blue-600 hover:underline">
-            Sign up
-          </a>
+          <Link to="/signup" className="text-indigo-600 font-semibold">
+            Signup
+          </Link>
         </p>
-
       </div>
     </div>
   );
-};
-
-export default Login;
+}

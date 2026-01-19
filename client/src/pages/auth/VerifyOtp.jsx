@@ -1,25 +1,37 @@
-const VerifyOtp = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { verifyOtp } from "../../api/auth";
 
-        <h2 className="text-2xl font-bold text-center text-blue-600 mb-6">
+export default function VerifyOtp() {
+  const { state } = useLocation();
+  const [otp, setOtp] = useState("");
+  const navigate = useNavigate();
+
+  const handleVerify = async () => {
+    await verifyOtp({ email: state.email, otp });
+    navigate("/login");
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600">
+      <div className="bg-white w-full max-w-md rounded-xl shadow-lg p-8">
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
           Verify OTP
         </h2>
 
         <input
-          type="text"
           placeholder="Enter OTP"
-          className="w-full px-4 py-2 border rounded-lg mb-4"
+          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+          onChange={(e) => setOtp(e.target.value)}
         />
 
-        <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+        <button
+          onClick={handleVerify}
+          className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
+        >
           Verify
         </button>
-
       </div>
     </div>
   );
-};
-
-export default VerifyOtp;
+}

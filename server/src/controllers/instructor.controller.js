@@ -3,24 +3,28 @@ import Name from "../models/name.js";
 
 export const instructorDashboard = async (req, res) => {
   try {
-    const instructor = await Name.findById(req.userId).select("-password");
+    const instructor = await Name.findById(req.userId).select(
+      "firstName lastName email department role"
+    );
+
     if (!instructor) {
       return res.status(404).json({ message: "Instructor record not found" });
     }
 
-    const displayName = instructor.email.split('@')[0];
-
-    res.json({
-      message: "Course Instructor dashboard accessed",
-      userId: req.userId,
-      role: req.role,
+    res.status(200).json({
       instructor: {
-        name: displayName,
-        email: instructor.email
-      }
+        firstName: instructor.firstName,
+        lastName: instructor.lastName,
+        email: instructor.email,
+        department: instructor.department,
+        role: instructor.role,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 

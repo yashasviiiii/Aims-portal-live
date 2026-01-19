@@ -1,12 +1,12 @@
-export const loginUser = async (email, password) => {
-  const res = await fetch("http://localhost:5000/api/auth/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  });
+import api from "./axios";
 
-  const data = await res.json();
-  return data;
-};
+// AUTH
+export const signup = (data) => api.post("/auth/signup", data);
+export const verifyOtp = (data) => api.post("/auth/verify-otp", data);
+export const login = (data) => api.post("/auth/login", data);
+
+// ADMIN
+export const getPendingUsers = () => api.get("/admin/pending-users");
+export const approveUser = (id) => api.post(`/admin/approve/${id}`);
+export const rejectUser = (id) => api.post(`/admin/reject/${id}`);
+

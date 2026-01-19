@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const InstructorDashboard = () => {
   // --- States ---
-  const [instructorData, setInstructorData] = useState({ name: "Loading..." });
+  const [instructorData, setInstructorData] = useState(null);
   const [activeTab, setActiveTab] = useState("Home");
   const [myCourses, setMyCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -50,7 +50,8 @@ const InstructorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <InstructorNavbar name={instructorData.name} setActiveTab={setActiveTab} />
+      <InstructorNavbar name={instructorData?.firstName || "Instructor"} setActiveTab={setActiveTab} />
+
       
       <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
         
