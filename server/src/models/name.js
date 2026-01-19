@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
+
 const nameSchema = new mongoose.Schema(
   {
+    // 🔐 Auth
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true,
-      trim: true,
     },
 
     password: {
@@ -20,26 +20,31 @@ const nameSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Password reset (OTP)
-    resetOtp: {
-      type: String,
-      default: null,
-    },
-
-    resetOtpExpiry: {
-      type: Date,
-      default: null,
-    },
-
-    isActive: {
+    // ✅ OTP verification
+    isVerified: {
       type: Boolean,
-      default: true,
+      default: false,
     },
+
+    otp: String,
+    otpExpiry: Date,
+
+    // 🛂 Admin approval
+    accountStatus: {
+      type: String,
+      enum: ["PENDING", "ACTIVE", "REJECTED"],
+      default: "PENDING",
+    },
+
+    // 👤 Profile info
+    firstName: String,
+    lastName: String,
+    department: String,
+    rollNo: String,
+    degree: String,
+    year: Number,
   },
-  {
-    timestamps: true, // createdAt, updatedAt
-  }
+  { timestamps: true }
 );
 
-const Name = mongoose.model("Name", nameSchema);
-export default Name;
+export default mongoose.model("Name", nameSchema);

@@ -12,7 +12,7 @@ import {
 import studentRoutes from "./src/routes/student.routes.js";
 import faRoutes from "./src/routes/fa.routes.js";
 import instructorRoutes from "./src/routes/instructor.routes.js";
-
+import adminRoutes from "./src/routes/admin.routes.js";
 
 
 import { connectDB } from './config/db.js';
@@ -28,7 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/fa", faRoutes);
 app.use("/api/instructor", instructorRoutes);
-
+app.use("/api/admin", adminRoutes);
 
 
 app.get('/', (req, res) => {

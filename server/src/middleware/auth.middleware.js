@@ -37,3 +37,10 @@ export const requireInstructor = (req, res, next) => {
   }
   next();
 };
+
+export const requireAdmin = (req, res, next) => {
+  if (req.role !== "ADMIN") {
+    return res.status(403).json({ message: "Admin access only" });
+  }
+  next();
+};
