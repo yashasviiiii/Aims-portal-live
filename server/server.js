@@ -3,6 +3,13 @@ import dotenv from 'dotenv';
 import healthRoutes from "./src/routes/health.routes.js";
 import authRoutes from "./src/routes/auth.routes.js";
 import cors from "cors";
+import {
+  verifyJWT,
+  requireStudent,
+  requireFA,
+  requireInstructor
+} from "./src/middleware/auth.middleware.js";
+
 
 
 import { connectDB } from './config/db.js';
@@ -20,6 +27,51 @@ app.use("/api/auth", authRoutes);
 app.get('/', (req, res) => {
     res.send("Hello World");
 });
+
+app.get("/api/test", verifyJWT, (req, res) => {
+  res.json({
+    message: "Protected route accessed",
+    userId: req.userId,
+    role: req.role,
+  });
+});
+
+app.get(
+  "/api/student/test",
+  verifyJWT,
+  requireStudent,
+  (req, res) => {
+    res.json({
+      message: "Student route accessed",
+      role: req.role,
+    });
+  }
+);
+
+app.get(
+  "/api/fa/test",
+  verifyJWT,
+  requireFA,
+  (req, res) => {
+    res.json({
+      message: "FA route accessed",
+      role: req.role,
+    });
+  }
+);
+
+app.get(
+  "/api/admin/test",
+  verifyJWT,
+  requireInstructor,
+  (req, res) => {
+    res.json({
+      message: "Admin route accessed",
+      role: req.role,
+    });
+  }
+);
+
 
 connectDB();
 

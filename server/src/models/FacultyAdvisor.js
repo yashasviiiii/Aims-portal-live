@@ -4,7 +4,7 @@ const facultyAdvisorSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Name",
       required: true,
       unique: true,
     },

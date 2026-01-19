@@ -27,7 +27,7 @@ const requestSchema = new mongoose.Schema(
 
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // FA
+      ref: "Name", // FA
       default: null,
     },
 

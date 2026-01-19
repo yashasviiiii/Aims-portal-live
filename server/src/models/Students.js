@@ -27,7 +27,7 @@ const studentSchema = new mongoose.Schema(
 
     facultyAdvisor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // FA user
+      ref: "Name", // FA user
     },
   },
   { timestamps: true }

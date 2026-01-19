@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-
-const userSchema = new mongoose.Schema(
+const nameSchema = new mongoose.Schema(
   {
     email: {
       type: String,
@@ -42,5 +41,5 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-const Name = mongoose.model("Name", userSchema);
+const Name = mongoose.model("Name", nameSchema);
 export default Name;
