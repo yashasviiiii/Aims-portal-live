@@ -6,7 +6,8 @@ import {
   handleCourseAction, 
   addCourse, 
   getMyCourses,
-  handleStudentEnrollment 
+  getEnrollingCourses, 
+  handleFinalFAAction
 } from "../controllers/fa.controller.js";
 
 const router = express.Router();
@@ -20,4 +21,7 @@ router.post("/handle-proposals", verifyJWT, authorizeRoles("FA"), handleCourseAc
 
 router.post("/add-course", verifyJWT, authorizeRoles("FA", "COURSE_INSTRUCTOR"), addCourse);
 router.get("/my-courses", verifyJWT, authorizeRoles("FA", "COURSE_INSTRUCTOR"), getMyCourses);
+
+router.get("/all-enrolling-courses", verifyJWT, authorizeRoles("FA"), getEnrollingCourses);
+router.post("/final-approval", verifyJWT, authorizeRoles("FA"), handleFinalFAAction);
 export default router;

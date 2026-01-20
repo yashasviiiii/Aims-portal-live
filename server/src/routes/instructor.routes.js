@@ -5,7 +5,9 @@ import {
   addCourse, 
   getMyCourses,
   getPendingEnrollments,
-  handleStudentRequest
+  handleStudentRequest,
+  getCourseEnrollments,
+  handleInstructorAction
 } from "../controllers/instructor.controller.js";
 
 const router = express.Router();
@@ -29,5 +31,6 @@ router.get("/pending-enrollments", verifyJWT, requireInstructor, getPendingEnrol
 
 // 2. Instructor approves/rejects student (Moves status to 'pending_fa' or 'rejected')
 router.post("/handle-student-request", verifyJWT, requireInstructor, handleStudentRequest);
-
+router.get("/course-students/:courseId", verifyJWT, requireInstructor, getCourseEnrollments);
+router.post("/enrollment-action", verifyJWT,requireInstructor, handleInstructorAction);
 export default router;
