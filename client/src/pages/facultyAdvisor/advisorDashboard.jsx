@@ -16,6 +16,11 @@ const AdvisorDashboard = () => {
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const [enrollingCourses, setEnrollingCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [pendingStudents, setPendingStudents] = useState([]);
+  const [selectedEnrollments, setSelectedEnrollments] = useState([]);
+  const [loadingEnrolling, setLoadingEnrolling] = useState(false);
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -37,6 +42,10 @@ const AdvisorDashboard = () => {
   useEffect(() => {
     if (activeTab === "My Courses") fetchMyCourses();
     if (activeTab === "Approve Courses") fetchProposedProposals();
+    if (activeTab === "All Courses") {
+      fetchAllEnrolling();
+      setSelectedCourse(null); // Reset drill-down view
+    }
     // Reset selection when switching tabs
     setSelectedIds([]);
   }, [activeTab]);
@@ -63,6 +72,62 @@ const AdvisorDashboard = () => {
     setActiveTab("My Courses"); // Switch tab to see the new course
   } catch (err) {
     alert("Submission failed. Ensure you are logged in correctly.");
+  }
+};
+
+  const fetchAllEnrolling = async () => {
+  setLoadingEnrolling(true);
+  try {
+    const res = await axios.get('http://localhost:5000/api/fa/all-enrolling-courses', config);
+    setEnrollingCourses(res.data);
+  } catch (err) {
+    console.error("Failed to fetch enrolling courses");
+  } finally {
+    setLoadingEnrolling(false);
+  }
+};
+
+const fetchStudentsForCourse = async (courseId) => {
+  setLoadingEnrolling(true);
+  try {
+    // Note: Reusing your enrollment-fetch logic but filtered for FA
+    const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${courseId}`, config);
+    // Only show students who have passed instructor approval
+    setPendingStudents(res.data);
+  } catch (err) {
+    console.error("Error fetching students");
+  } finally {
+    setLoadingEnrolling(false);
+  }
+};
+
+// 2. Logic for the Final Approval button
+const handleFinalFAAction = async (action) => {
+  if (selectedEnrollments.length === 0) return alert("Please select at least one student.");
+  
+  const confirmMsg = action === 'approve' 
+    ? "Are you sure you want to finalize enrollment for selected students?" 
+    : "Reject selected students?";
+    
+  if (!window.confirm(confirmMsg)) return;
+
+  try {
+    const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
+      enrollmentIds: selectedEnrollments,
+      action: action
+    }, config);
+
+    alert(response.data.message);
+    
+    // SIMULTANEOUS UPDATE: 
+    // Clear the selection checkboxes
+    setSelectedEnrollments([]);
+    // Re-fetch the student list to show the "Enrolled" status immediately
+    fetchStudentsForCourse(selectedCourse._id); 
+    
+  } catch (err) {
+    console.error("Action failed:", err);
+    alert("Failed to process approval.");
   }
 };
 
@@ -101,9 +166,13 @@ const AdvisorDashboard = () => {
   }
 };
 
-  const toggleSelection = (id) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
-  };
+  const toggleStudentSelection = (enrollId) => {
+  setSelectedEnrollments(prev => 
+    prev.includes(enrollId) 
+      ? prev.filter(id => id !== enrollId) 
+      : [...prev, enrollId]
+  );
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -196,6 +265,105 @@ const AdvisorDashboard = () => {
             )}
           </div>
         )}
+        
+        {/* ---ALL COURSES---  */}
+        {activeTab === "All Courses" && (
+  <div className="animate-fadeIn">
+    {!selectedCourse ? (
+      <>
+        <h2 className="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">Active Enrollments</h2>
+        <div className="grid grid-cols-12 gap-4 px-5 mb-3 text-xs font-bold uppercase text-gray-400">
+          <div className="col-span-2">Code</div>
+          <div className="col-span-5">Course Name</div>
+          <div className="col-span-3">Instructor</div>
+          <div className="col-span-2 text-right">Action</div>
+        </div>
+        {loadingEnrolling ? <p className="text-center py-10">Loading...</p> : (
+          <div className="space-y-3">
+            {enrollingCourses.map(course => (
+              <div key={course._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border rounded-xl shadow-sm">
+                <div className="col-span-2 font-bold text-indigo-600">{course.courseCode}</div>
+                <div className="col-span-5 font-bold text-gray-800">{course.courseName}</div>
+                <div className="col-span-3 text-sm text-gray-500">{course.instructor}</div>
+                <div className="col-span-2 text-right">
+                  <button 
+                    onClick={() => { setSelectedCourse(course); fetchStudentsForCourse(course._id); }}
+                    className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition"
+                  >
+                    View Students
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    ) : (
+      // DRILL DOWN: Student Approval Table
+      <div className="animate-fadeIn">
+        <button onClick={() => setSelectedCourse(null)} className="text-indigo-600 mb-4 font-bold flex items-center gap-1">
+          ← Back to All Courses
+        </button>
+        <div className="flex justify-between items-center mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+          <div>
+            <h3 className="text-xl font-bold text-indigo-900">{selectedCourse.courseCode} Students</h3>
+            <p className="text-sm text-indigo-700">Awaiting final Faculty Advisor approval</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => handleFinalFAAction('approve')} className="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-sm shadow-md">Final Approve</button>
+            <button onClick={() => handleFinalFAAction('reject')} className="bg-rose-600 text-white px-4 py-2 rounded font-bold text-sm shadow-md">Reject</button>
+          </div>
+        </div>
+        <div className="border rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-left bg-white">
+            <thead className="bg-gray-100 text-[10px] uppercase font-bold text-gray-500">
+              <tr>
+                <th className="p-4 w-12"><input type="checkbox" onChange={(e) => {
+                   if (e.target.checked) setSelectedEnrollments(pendingStudents.map(s => s._id));
+                   else setSelectedEnrollments([]);
+                }} /></th>
+                <th className="p-4">Roll Number</th>
+                <th className="p-4">Email</th>
+                <th className="p-4 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingStudents.length === 0 ? (
+                <tr><td colSpan="4" className="p-10 text-center text-gray-400 italic">No students pending FA approval for this course.</td></tr>
+              ) : (
+                pendingStudents.map(enroll => (
+                  <tr key={enroll._id} className="border-t hover:bg-gray-50">
+                    <td className="p-4">
+                    {/* Only allow selection if the status is pending_fa */}
+                    {enroll.status === 'pending_fa' && (
+                      <input 
+                        type="checkbox" 
+                        checked={selectedEnrollments.includes(enroll._id)}
+                        onChange={() => toggleStudentSelection(enroll._id)}
+                     />
+                    )}
+                    </td>
+                    <td className="p-4 font-bold">{enroll.studentId?.email?.split('@')[0]}</td>
+                    <td className="p-4 text-sm text-gray-500">{enroll.studentId?.email}</td>
+                    <td className="p-4">
+      <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
+          enroll.status === 'approved' 
+            ? 'bg-green-100 text-green-700 border-green-200' 
+            : 'bg-purple-100 text-purple-700 border-purple-200 shadow-sm'
+        }`}>
+          {enroll.status === 'approved' ? '✓ Enrolled' : 'Awaiting My Approval'}
+        </span>
+    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
         {/* --- APPROVE COURSES TAB --- */}
         {activeTab === "Approve Courses" && (

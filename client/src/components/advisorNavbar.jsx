@@ -57,18 +57,25 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
           </button>
 
           {showDropdown && (
-            <div className="absolute left-0 w-full bg-white shadow-lg z-50 border-x border-b border-slate-200 flex flex-col animate-fadeIn">
+            <div className="absolute left-0 w-64 bg-white shadow-xl z-50 border border-slate-200 flex flex-col animate-fadeIn rounded-b-md">
               <button 
                 onClick={() => handleTabSelection("My Courses")}
                 className="px-4 py-3 text-left hover:bg-indigo-50 text-slate-700 font-semibold text-sm border-b border-slate-100 transition-colors"
               >
-                My Courses
+                My Courses <span className="text-[10px] text-gray-400 block font-normal">Manage your own subjects</span>
               </button>
+              
               <button 
                 onClick={() => handleTabSelection("Approve Courses")}
+                className="px-4 py-3 text-left hover:bg-indigo-50 text-slate-700 font-semibold text-sm border-b border-slate-100 transition-colors"
+              >
+                Approve Course <span className="text-[10px] text-gray-400 block font-normal">Review departmental offerings</span>
+              </button>
+              <button 
+                onClick={() => handleTabSelection("All Courses")}
                 className="px-4 py-3 text-left hover:bg-indigo-50 text-slate-700 font-semibold text-sm transition-colors"
               >
-                Approve Courses
+                All Courses <span className="text-[10px] text-gray-400 block font-normal">Final student enrollment approval</span>
               </button>
             </div>
           )}

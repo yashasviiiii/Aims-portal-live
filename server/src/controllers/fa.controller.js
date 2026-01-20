@@ -126,29 +126,29 @@ export const handleStudentEnrollment = async (req, res) => {
   }
 };
 
-// ADD: Get enrollments waiting for final FA approval
-export const getEnrolmentRequestsForFA = async (req, res) => {
+export const getEnrollingCourses = async (req, res) => {
   try {
-    const requests = await Enrollment.find({ status: "pending_fa" })
-      .populate("studentId", "email")
-      .populate("courseId", "courseName courseCode")
-      .populate("instructorId", "email");
-    
-    res.json(requests);
+    // Fetch all courses that are currently in the enrollment phase
+    const courses = await Course.find({ status: 'enrolling' }).sort({ courseCode: 1 });
+    res.json(courses);
   } catch (err) {
-    res.status(500).json({ message: "Error fetching FA pending requests" });
+    res.status(500).json({ message: "Error fetching enrolling courses" });
   }
 };
 
-// ADD: Final approval (Completes the record)
-export const finalizeEnrollment = async (req, res) => {
+export const handleFinalFAAction = async (req, res) => {
   try {
-    const { enrollmentId, action } = req.body;
-    const finalStatus = action === "approve" ? "approved" : "rejected";
+    const { enrollmentIds, action } = req.body;
+    // Final step: moving to 'approved' or 'rejected'
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    await Enrollment.findByIdAndUpdate(enrollmentId, { status: finalStatus });
-    res.json({ message: `Enrollment ${finalStatus} by Faculty Advisor` });
+    await Enrollment.updateMany(
+      { _id: { $in: enrollmentIds } },
+      { $set: { status: newStatus } }
+    );
+
+    res.json({ message: `Enrollments successfully ${newStatus}` });
   } catch (err) {
-    res.status(500).json({ message: "Finalization failed" });
+    res.status(500).json({ message: "Final approval failed" });
   }
 };

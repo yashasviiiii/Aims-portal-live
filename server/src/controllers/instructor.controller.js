@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import Enrollment from '../models/Enrollment.js';
 import Name from "../models/name.js";
 import CourseInstructor from "../models/CourseInstructor.js";
 
@@ -114,3 +115,35 @@ export const handleStudentRequest = async (req, res) => {
 };
 // NOTE: DO NOT add "export default" at the bottom. 
 // Using "export const" at the top of each function is enough.
+
+export const getCourseEnrollments = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    // Find enrollments for this specific course that are waiting for THIS instructor
+    const enrollments = await Enrollment.find({ 
+      courseId: courseId,
+      status: { $in: ['pending_instructor', 'pending_fa', 'approved'] } 
+    }).populate('studentId', 'email'); // Get student details
+
+    res.status(200).json(enrollments);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching students" });
+  }
+};
+
+export const handleInstructorAction = async (req, res) => {
+  try {
+    const { enrollmentIds, action } = req.body; // action: 'approve' or 'reject'
+    const newStatus = action === 'approve' ? 'pending_fa' : 'rejected';
+
+    await Enrollment.updateMany(
+      { _id: { $in: enrollmentIds } },
+      { $set: { status: newStatus } }
+    );
+
+    res.json({ message: `Students ${action}ed successfully` });
+  } catch (err) {
+    res.status(500).json({ message: "Action failed" });
+  }
+};
