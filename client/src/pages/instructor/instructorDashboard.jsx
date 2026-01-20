@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import InstructorNavbar from '../../components/instructorNavbar';
-import axios from 'axios';
+import axios from "axios";
 
 const InstructorDashboard = () => {
   // --- States ---
@@ -21,7 +21,7 @@ const InstructorDashboard = () => {
       } catch (error) {
         console.error("Dashboard profile fetch failed");
         const backupEmail = localStorage.getItem("userEmail");
-        setInstructorData({ name: backupEmail ? backupEmail.split('@')[0] : "Instructor" });
+        setInstructorData( backupEmail ? backupEmail.split('@')[0] : "Instructor" );
       }
     };
     fetchInstructorData();
@@ -50,7 +50,7 @@ const InstructorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <InstructorNavbar name={instructorData?.firstName || "Instructor"} setActiveTab={setActiveTab} />
+      <InstructorNavbar name={instructorData?.name || "Instructor"} setActiveTab={setActiveTab} />
 
       
       <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
