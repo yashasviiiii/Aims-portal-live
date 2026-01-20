@@ -29,7 +29,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeTab === "Pending Users") loadPendingUsers();
-    if (activeTab === "All Users") loadAllUsers();
+    if (activeTab === "Active Users") loadAllUsers();
   }, [activeTab]);
 
   const handleApprove = async (id) => {
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
             {loading ? (
               <p>Loading...</p>
             ) : pendingUsers.length === 0 ? (
-              <p className="text-gray-500">No pending users 🎉</p>
+              <p className="text-gray-500">No pending users</p>
             ) : (
               <table className="w-full border">
                 <thead className="bg-indigo-50">
@@ -72,7 +72,13 @@ export default function AdminDashboard() {
                   {pendingUsers.map((u) => (
                     <tr key={u._id} className="text-center">
                       <td className="p-3 border">{u.email}</td>
-                      <td className="p-3 border">{u.role}</td>
+                      <td className="p-3 border">
+                        {u.role === "COURSE_INSTRUCTOR"
+                          ? "Instructor"
+                          : u.role === "FA"
+                          ? "Faculty Advisor"
+                          : u.role}
+                      </td>
                       <td className="p-3 border">{u.department}</td>
                       <td className="p-3 border flex gap-2 justify-center">
                         <button
@@ -97,7 +103,7 @@ export default function AdminDashboard() {
         )}
 
         {/* ALL USERS */}
-        {activeTab === "All Users" && (
+        {activeTab === "Active Users" && (
           <>
             <h2 className="text-2xl font-bold mb-6 text-indigo-900">
               All Users
@@ -109,17 +115,23 @@ export default function AdminDashboard() {
               <table className="w-full border">
                 <thead className="bg-gray-100">
                   <tr>
+                    <th className="p-3 border">Name</th>
                     <th className="p-3 border">Email</th>
                     <th className="p-3 border">Role</th>
-                    <th className="p-3 border">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allUsers.map((u) => (
                     <tr key={u._id} className="text-center">
+                      <td className="p-3 border">{u.firstName} {u.lastName}</td>
                       <td className="p-3 border">{u.email}</td>
-                      <td className="p-3 border">{u.role}</td>
-                      <td className="p-3 border">{u.accountStatus}</td>
+                      <td className="p-3 border">
+                        {u.role === "COURSE_INSTRUCTOR"
+                          ? "Instructor"
+                          : u.role === "FA"
+                          ? "Faculty Advisor"
+                          : u.role}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -138,7 +150,7 @@ export default function AdminDashboard() {
               For issues contact:
               <span className="font-bold text-indigo-700">
                 {" "}
-                aims_admin@iitrpr.ac.in
+                developer@gmail.com
               </span>
             </p>
           </div>

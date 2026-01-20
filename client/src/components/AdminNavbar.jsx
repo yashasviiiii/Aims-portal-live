@@ -1,4 +1,4 @@
-const AdvisorNavbar = ({ name, setActiveTab }) => {
+const AdminNavbar = ({ setActiveTab }) => {
     const handleLogout = () => {
       localStorage.removeItem("token");
       localStorage.setItem("logout", Date.now());
@@ -12,12 +12,9 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
     <nav className="bg-indigo-900 text-white shadow-md">
       {/* Top Bar */}
       <div className="flex justify-between items-center px-6 py-3 border-b border-indigo-800">
-        <h1 className="text-2xl font-bold tracking-wide">AIMS | Advisor </h1>
+        <h1 className="text-2xl font-bold tracking-wide">AIMS | Admin </h1>
 
         <div className="flex items-center gap-4">
-          <span className="bg-indigo-800 px-3 py-1 rounded text-sm font-mono">
-            Prof. {name}
-          </span>
           <button
             onClick={handleLogout}
             className="flex items-center gap-1 text-sm hover:text-red-300 transition"
@@ -29,7 +26,7 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
 
       {/* Tab Bar */}
       <div className="flex bg-slate-100 text-slate-800">
-        {['Home', 'My Courses', 'Students', 'Requests', 'Help'].map((tab) => (
+        {['Pending Users', 'Active Users', 'Help'].map((tab) => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)}
@@ -43,4 +40,4 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
   );
 };
 
-export default AdvisorNavbar;
+export default AdminNavbar;
