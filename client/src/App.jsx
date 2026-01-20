@@ -17,7 +17,7 @@ function App() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/instructor-dashboard" element={ <InstructorDashboard />} />
-        <Route path="/fa-dashboard" element={ <AdvisorDashboard />} />
+        <Route path="/fa-dashboard" element={<ProtectedRoute role="FA"> <AdvisorDashboard /> </ProtectedRoute>}/>
         <Route path="/admin" element={<ProtectedRoute role="ADMIN"> <AdminDashboard /> </ProtectedRoute> }/>
       </Routes>
     </BrowserRouter>
