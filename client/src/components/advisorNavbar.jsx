@@ -1,10 +1,12 @@
 import React from 'react';
 
 const AdvisorNavbar = ({ name, setActiveTab }) => {
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
-  };
+    const handleLogout = () => {
+      localStorage.removeItem("token");
+      localStorage.setItem("logout", Date.now());
+
+      window.location.href = "/";
+    };
 
   return (
     <nav className="bg-indigo-900 text-white shadow-md">

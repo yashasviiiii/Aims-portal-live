@@ -7,8 +7,22 @@ import StudentDashboard from "./pages/student/studentDashboard.jsx";
 import InstructorDashboard from "./pages/instructor/instructorDashboard.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdvisorDashboard from "./pages/facultyAdvisor/advisorDashboard.jsx";
+import { useEffect } from "react";
 
 function App() {
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "logout") {
+        window.location.href = "/";
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

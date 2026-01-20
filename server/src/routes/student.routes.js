@@ -4,7 +4,8 @@ import {
   studentDashboard, 
   getAllCourses, 
   creditCourses, 
-  getMyRecords 
+  getMyRecords,
+  getStudentRecord 
 } from "../controllers/student.controller.js";
 
 const router = express.Router();
@@ -20,5 +21,7 @@ router.post("/credit", verifyJWT, creditCourses);
 
 // 4. Fetch final records (Status: 'approved')
 router.get("/my-records", verifyJWT, getMyRecords);
+
+router.get("/record", verifyJWT, getStudentRecord);
 
 export default router;

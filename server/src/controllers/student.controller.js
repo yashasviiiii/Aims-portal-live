@@ -80,3 +80,62 @@ export const getMyRecords = async (req, res) => {
     res.status(500).json({ message: "Error fetching records" });
   }
 };
+
+export const getStudentRecord = async (req, res) => {
+  try {
+    const studentId = req.userId;
+
+    const student = await Name.findById(studentId).select(
+      "firstName lastName department entryNumber email"
+    );
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const enrollments = await Enrollment.find({
+      studentId,
+      status: "approved",
+    }).populate("courseId");
+
+    if (!enrollments.length) {
+      return res.json({
+        student,   // ✅ FIX
+        records: [],
+        cgpa: null,
+      });
+    }
+
+    const sessions = {};
+
+    enrollments.forEach(e => {
+      const session = e.courseId.session;
+
+      if (!sessions[session]) {
+        sessions[session] = {
+          session,
+          courses: [],
+        };
+      }
+
+      sessions[session].courses.push({
+        course: e.courseId,
+        grade: e.grade || "NA",
+        category: e.courseId.category || "Core",
+        status: e.status,
+      });
+    });
+
+    const records = Object.values(sessions);
+
+    return res.json({
+      student,   // ✅ FIX
+      records,
+      cgpa: null,
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

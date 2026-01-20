@@ -2,10 +2,14 @@ import React, { useEffect, useState } from 'react';
 import StudentNavbar from '../../components/studentNavbar';
 import axios from 'axios';
 import CoursesSection from '../../components/CoursesSection';
+import { getStudentRecord } from '../../api/student';
 
 const StudentDashboard = () => {
   const [roll, setRoll] = useState("Loading...");
   const [activeTab, setActiveTab] = useState("Home");
+  const [record, setRecord] = useState(null);
+  const [loadingRecord, setLoadingRecord] = useState(false);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,6 +26,25 @@ const StudentDashboard = () => {
     };
     fetchData();
   }, []);
+
+  //fetch student data 
+useEffect(() => {
+  if (activeTab !== "Record") return;
+
+  const fetchRecord = async () => {
+    try {
+      setLoadingRecord(true);
+      const res = await getStudentRecord();
+      setRecord(res.data);
+    } catch (err) {
+      console.error("Failed to fetch record:", err);
+    } finally {
+      setLoadingRecord(false);
+    }
+  };
+
+  fetchRecord();
+}, [activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -71,12 +94,116 @@ const StudentDashboard = () => {
 
         {activeTab === "Courses" && <CoursesSection />}
 
-        {activeTab === "Record" && (
-          <div className="text-center py-20 text-gray-400">
-            <h2 className="text-2xl font-bold mb-2">Record</h2>
-            <p>Grade sheets and transcripts are being generated.</p>
-          </div>
-        )}
+      {activeTab === "Record" && (
+        <div className="space-y-8">
+          {/* Student Info */}
+          {record?.student && (
+            <>
+            <h1> Student Details </h1>
+            <div className="bg-white rounded-xl shadow border p-6 grid md:grid-cols-6 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">First Name</p>
+                <p className="font-semibold">{record.student.firstName ?? "-"}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Last Name</p>
+                <p className="font-semibold">{record.student.lastName ?? "-"}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Roll No</p>
+                <p className="font-semibold">{record.student.email.split('@')[0] ?? "-"}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Department</p>
+                <p className="font-semibold">{record.student.department ?? "-"}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500">Email</p>
+                <p className="font-semibold">{record.student.email ?? "-"}</p>
+              </div>
+
+              {/* CGPA */}
+              {typeof record.cgpa === "number" && (
+                <div className="bg-indigo-50 border rounded-xl p-4 text-center">
+                  <p className="text-sm text-gray-500">Cumulative GPA</p>
+                  <p className="text-3xl font-bold text-indigo-700">
+                    {record.cgpa.toFixed(2)}
+                  </p>
+                </div>
+              )}
+            </div>
+            </>
+          )}
+
+          {/* Session Records */}
+          {record?.records?.length > 0 &&
+            record.records.map((session, idx) => (
+              <div key={idx} className="bg-white rounded-xl shadow border">
+
+                {/* Header */}
+                <div className="bg-slate-900 text-white px-5 py-2 rounded-t-xl text-sm font-semibold">
+                  Academic session: {session?.session ?? "-"}
+                  {typeof session?.sgpa === "number" && ` | SGPA: ${session.sgpa.toFixed(2)}`}
+                  {typeof session?.cgpa === "number" && ` | CGPA: ${session.cgpa.toFixed(2)}`}
+                </div>
+
+                {/* Table */}
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 text-gray-700">
+                    <tr>
+                      <th className="p-2 text-left">#</th>
+                      <th className="p-2 text-left">Course</th>
+                      <th className="p-2">Status</th>
+                      <th className="p-2">Category</th>
+                      <th className="p-2">Grade</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {session?.courses?.length > 0 ? (
+                      session.courses.map((c, i) => (
+                        <tr key={i} className="border-t hover:bg-gray-50">
+                          <td className="p-2">{i + 1}</td>
+                          <td className="p-2">
+                            {c?.course?.courseCode ?? "-"} — {c?.course?.courseName ?? "-"}
+                          </td>
+                          <td className="p-2 text-center">{c?.status ?? "-"}</td>
+                          <td className="p-2 text-center">{c?.category ?? "-"}</td>
+                          <td className="p-2 text-center font-semibold">{c?.grade ?? "-"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="p-4 text-center text-gray-400">
+                          No courses found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+          {/* Loading */}
+          {loadingRecord && (
+            <p className="text-center text-gray-500 py-10">
+              Loading academic record...
+            </p>
+          )}
+
+          {/* Empty */}
+          {!loadingRecord && !record && (
+            <p className="text-center text-gray-400 py-10">
+              Academic records are being generated.
+            </p>
+          )}
+
+        </div>
+      )}
 
       </main>
     </div>

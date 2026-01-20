@@ -8,6 +8,15 @@ const enrollmentSchema = new mongoose.Schema({
   // 2. pending_fa (After Instructor approves)
   // 3. approved (After FA approves)
   // 4. rejected
+  session: {
+    type: String, // e.g. "2023-I", "2023-II"
+    required: true
+  },
+
+  grade: {
+    type: String, // A, A-, B, etc.
+    default: null
+  },
   status: { 
     type: String, 
     enum: ["pending_instructor", "pending_fa", "approved", "rejected"], 

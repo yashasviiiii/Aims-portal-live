@@ -30,7 +30,7 @@ export default function Login() {
 
       toast.success("Login successful", { id: toastId });
 
-      navigate(roleRoutes[res.data.role] || "/login");
+      navigate(roleRoutes[res.data.role] || "/");
     } catch (err) {
       toast.error(
         err.response?.data?.message || "Invalid email or password",

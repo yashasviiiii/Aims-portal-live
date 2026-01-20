@@ -2,7 +2,9 @@ import React from 'react';
 
 const StudentNavbar = ({ rollNumber, setActiveTab }) => {
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.setItem("logout", Date.now());
+
     window.location.href = "/";
   };
   return (
