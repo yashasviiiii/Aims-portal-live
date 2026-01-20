@@ -11,7 +11,7 @@ const courseSchema = new mongoose.Schema({
   instructorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Name' },
   status: { 
     type: String, 
-    enum: ['proposed', 'enrolling', 'completed'], 
+    enum: ['proposed', 'enrolling', 'completed','rejected'], 
     default: 'proposed' 
   }
 });

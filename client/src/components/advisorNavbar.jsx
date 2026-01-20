@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const AdvisorNavbar = ({ name, setActiveTab }) => {
     const handleLogout = () => {
@@ -7,6 +7,12 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
 
       window.location.href = "/";
     };
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const handleTabSelection = (tab) => {
+    setActiveTab(tab);
+    setShowDropdown(false);
+  };
 
   return (
     <nav className="bg-indigo-900 text-white shadow-md">
@@ -28,7 +34,7 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
       
       {/* Taskbar Panes */}
       <div className="flex bg-slate-100 text-slate-800">
-        {['Home', 'My Courses', 'Add Course', 'Help'].map((tab) => (
+        {['Home', 'Add Course'].map((tab) => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)}
@@ -37,6 +43,44 @@ const AdvisorNavbar = ({ name, setActiveTab }) => {
             {tab}
           </button>
         ))}
+
+        {/* --- DROPDOWN FOR COURSES --- */}
+        <div 
+          className="relative border-r border-slate-200"
+          onMouseEnter={() => setShowDropdown(true)}
+          onMouseLeave={() => setShowDropdown(false)}
+        >
+          <button className="px-8 py-2 hover:bg-white hover:text-indigo-600 font-semibold transition-all flex items-center gap-2">
+            Courses
+            <svg className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showDropdown && (
+            <div className="absolute left-0 w-full bg-white shadow-lg z-50 border-x border-b border-slate-200 flex flex-col animate-fadeIn">
+              <button 
+                onClick={() => handleTabSelection("My Courses")}
+                className="px-4 py-3 text-left hover:bg-indigo-50 text-slate-700 font-semibold text-sm border-b border-slate-100 transition-colors"
+              >
+                My Courses
+              </button>
+              <button 
+                onClick={() => handleTabSelection("Approve Courses")}
+                className="px-4 py-3 text-left hover:bg-indigo-50 text-slate-700 font-semibold text-sm transition-colors"
+              >
+                Approve Courses
+              </button>
+            </div>
+          )}
+        </div>
+
+        <button 
+          onClick={() => setActiveTab('Help')}
+          className="px-8 py-2 hover:bg-white hover:text-indigo-600 font-semibold border-r border-slate-200 transition-all"
+        >
+          Help
+        </button>
       </div>
     </nav>
   );

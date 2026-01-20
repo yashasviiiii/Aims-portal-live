@@ -4,67 +4,124 @@ import axios from 'axios';
 
 const AdvisorDashboard = () => {
   // --- States ---
-  const [instructorData, setInstructorData] = useState(null);
+  const [userData, setUserData] = useState({ name: "Advisor" });
   const [activeTab, setActiveTab] = useState("Home");
+  
+  // States for "My Courses" (Courses this Advisor teaches)
   const [myCourses, setMyCourses] = useState([]);
-  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingMyCourses, setLoadingMyCourses] = useState(false);
 
-  // --- Effect 1: Load Instructor Profile on Mount ---
+  // States for "Approve Courses" (Proposals from all Instructors)
+  const [allProposedCourses, setAllProposedCourses] = useState([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const token = localStorage.getItem("token");
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+
+  // --- Effect 1: Load Profile Data ---
   useEffect(() => {
-    const fetchInstructorData = async () => {
+    const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get('http://localhost:5000/api/instructor/dashboard', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setInstructorData(response.data.instructor);
+        const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
+        setUserData(response.data.instructor);
       } catch (error) {
-        console.error("Dashboard profile fetch failed");
         const backupEmail = localStorage.getItem("userEmail");
-        setInstructorData({ name: backupEmail ? backupEmail.split('@')[0] : "Instructor" });
+        setUserData({ name: backupEmail ? backupEmail.split('@')[0] : "Advisor" });
       }
     };
-    fetchInstructorData();
+    fetchProfile();
   }, []);
 
-  // --- Effect 2: Load Courses when "My Courses" tab is clicked ---
+  // --- Effect 2: Tab Switching Logic ---
   useEffect(() => {
-    if (activeTab === "My Courses") {
-      const fetchMyCourses = async () => {
-        setLoadingCourses(true);
-        try {
-          const token = localStorage.getItem("token");
-          const res = await axios.get('http://localhost:5000/api/instructor/my-courses', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setMyCourses(res.data);
-        } catch (err) {
-          console.error("Failed to fetch courses");
-        } finally {
-          setLoadingCourses(false);
-        }
-      };
-      fetchMyCourses();
-    }
+    if (activeTab === "My Courses") fetchMyCourses();
+    if (activeTab === "Approve Courses") fetchProposedProposals();
+    // Reset selection when switching tabs
+    setSelectedIds([]);
   }, [activeTab]);
+
+  const fetchMyCourses = async () => {
+    setLoadingMyCourses(true);
+    try {
+      // UPDATED URL: point to /api/fa/
+      const res = await axios.get('http://localhost:5000/api/fa/my-courses', config);
+      setMyCourses(res.data);
+    } catch (err) {
+      console.error("Failed to fetch personal courses");
+    } finally {
+      setLoadingMyCourses(false);
+    }
+  };
+  const handleAddCourse = async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  try {
+    // UPDATED URL: point to /api/fa/
+    await axios.post('http://localhost:5000/api/fa/add-course', data, config);
+    alert("Course proposed successfully!");
+    setActiveTab("My Courses"); // Switch tab to see the new course
+  } catch (err) {
+    alert("Submission failed. Ensure you are logged in correctly.");
+  }
+};
+
+  const fetchProposedProposals = async () => {
+    setLoadingProposals(true);
+    try {
+      const res = await axios.get('http://localhost:5000/api/fa/proposed-proposals', config);
+      setAllProposedCourses(res.data);
+    } catch (err) { console.error("Failed to fetch proposals"); }
+    finally { setLoadingProposals(false); }
+  };
+
+  const handleProposalAction = async (action) => {
+  if (selectedIds.length === 0) return alert("Please select at least one course.");
+  
+  const confirmMsg = action === 'approve' 
+    ? "Approve selected courses for enrollment?" 
+    : "Reject selected proposals?";
+    
+  if (!window.confirm(confirmMsg)) return;
+
+  try {
+    // Send 'approve' or 'reject' to the backend
+    await axios.post('http://localhost:5000/api/fa/handle-proposals', { 
+      courseIds: selectedIds, 
+      action: action // matches the 'action' variable in controller
+    }, config);
+
+    alert(`Courses ${action}ed successfully.`);
+    
+    // Clear selection and refresh the list
+    setSelectedIds([]);
+    fetchProposedProposals(); // This removes them from the 'Approval' view because their status is no longer 'proposed'
+  } catch (err) {
+    alert("Operation failed. Please check backend logs.");
+  }
+};
+
+  const toggleSelection = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdvisorNavbar name={instructorData?.firstName || "Instructor"} setActiveTab={setActiveTab} />
+      <AdvisorNavbar name={userData.name || "Advisor"} setActiveTab={setActiveTab} />
 
-      
-      <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
+      <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200 min-h-[60vh]">
         
         {/* --- HOME TAB --- */}
         {activeTab === "Home" && (
           <div className="animate-fadeIn">
-            <h2 className="text-xl font-bold text-indigo-900 mb-4">Instructor Portal</h2>
-            <p className="text-gray-600">Welcome to the Academic Information Management System.</p>
-            <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400">
-              <p className="text-blue-800 font-medium">Quick Actions:</p>
-              <ul className="list-disc ml-5 mt-2 text-blue-700">
-                <li>Use <b>Add Course</b> to launch new enrollments.</li>
-                <li>Check <b>My Courses</b> to see your proposed or enrolling subjects.</li>
+            <h2 className="text-xl font-bold text-indigo-900 mb-4">Faculty Advisor Portal</h2>
+            <p className="text-gray-600">Welcome, Prof. {userData.name}. Use the taskbar above to manage offerings.</p>
+            <div className="mt-6 p-6 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg">
+              <p className="text-indigo-900 font-bold mb-2">Quick Guide:</p>
+              <ul className="space-y-2 text-indigo-800 text-sm">
+                <li className="flex gap-2"><b>• Add Course:</b> Propose a new course you intend to teach.</li>
+                <li className="flex gap-2"><b>• My Courses:</b> View status of your personal course submissions.</li>
+                <li className="flex gap-2"><b>• Approve Courses:</b> Review and Open/Reject all departmental proposals.</li>
               </ul>
             </div>
           </div>
@@ -72,47 +129,30 @@ const AdvisorDashboard = () => {
 
         {/* --- ADD COURSE TAB --- */}
         {activeTab === "Add Course" && (
-          <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-2xl font-bold mb-6 text-indigo-900 border-b pb-2">Course Offering Form</h2>
+          <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-sm border animate-fadeIn">
+            <h2 className="text-2xl font-bold mb-6 text-indigo-900 border-b pb-2">New Course Offering</h2>
             <form onSubmit={async (e) => {
               e.preventDefault();
               const data = Object.fromEntries(new FormData(e.target));
               try {
-                const token = localStorage.getItem("token");
-                await axios.post('http://localhost:5000/api/instructor/add-course', data, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                alert("Course submitted and status set to 'Proposed'");
+                await axios.post('http://localhost:5000/api/instructor/add-course', data, config);
+                alert("Course submitted for approval!");
                 setActiveTab("My Courses"); 
               } catch (err) { alert("Submission failed"); }
             }} className="grid grid-cols-2 gap-4">
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Course Code</label>
-                <input name="courseCode" placeholder="CS301" className="w-full p-2 border rounded" required />
-              </div>
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Course Name</label>
-                <input name="courseName" placeholder="Operating Systems" className="w-full p-2 border rounded" required />
-              </div>
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Offering Department</label>
-                <input name="offeringDept" placeholder="CSE" className="w-full p-2 border rounded" required />
-              </div>
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Credits</label>
-                <input name="credits" placeholder="3" type="number" className="w-full p-2 border rounded" required />
-              </div>
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Session</label>
-                <input name="session" placeholder="2024-I" className="w-full p-2 border rounded" required />
-              </div>
-              <div className="col-span-1">
-                <label className="text-sm font-semibold">Slot</label>
-                <input name="slot" placeholder="pce-1" className="w-full p-2 border rounded" required />
-              </div>
-              <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700">
-                Submit Course Offering
-              </button>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Course Code</label>
+                <input name="courseCode" placeholder="CS301" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Course Name</label>
+                <input name="courseName" placeholder="Operating Systems" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Offering Dept</label>
+                <input name="offeringDept" placeholder="CSE" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Credits</label>
+                <input name="credits" type="number" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Session</label>
+                <input name="session" placeholder="2024-I" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <div className="col-span-1"><label className="text-xs font-bold uppercase text-gray-500">Slot</label>
+                <input name="slot" placeholder="A1" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required /></div>
+              <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-3 rounded-md font-bold hover:bg-indigo-700 transition-colors shadow-lg">Submit Offering</button>
             </form>
           </div>
         )}
@@ -120,35 +160,35 @@ const AdvisorDashboard = () => {
         {/* --- MY COURSES TAB --- */}
         {activeTab === "My Courses" && (
           <div className="animate-fadeIn">
-            <h2 className="text-2xl font-bold text-indigo-900 mb-6">My Course Offerings</h2>
-            {loadingCourses ? (
-              <p>Loading courses...</p>
-            ) : myCourses.length === 0 ? (
-              <p className="text-gray-500">No courses offered yet.</p>
-            ) : (
-              <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">My Teaching Load</h2>
+            
+            {/* Table Headings */}
+            <div className="grid grid-cols-12 gap-4 px-5 mb-3 text-xs font-bold uppercase text-gray-400 tracking-wider">
+              <div className="col-span-1">S.No</div>
+              <div className="col-span-2">Code</div>
+              <div className="col-span-3">Course Name</div>
+              <div className="col-span-4 text-center">Details</div>
+              <div className="col-span-2 text-right">Status</div>
+            </div>
+
+            {loadingMyCourses ? <p className="text-center py-10">Loading...</p> : myCourses.length === 0 ? <p className="text-center py-10 text-gray-400 italic">No courses offered yet.</p> : (
+              <div className="space-y-3">
                 {myCourses.map((course, index) => (
-                  <div key={course._id} className="flex flex-col md:flex-row items-center p-5 bg-white border rounded-xl shadow-sm gap-4">
-                    <div className="flex items-center gap-4 min-w-[120px]">
-                      <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
-                      <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-md font-bold text-sm">
-                        {course.courseCode}
-                      </span>
+                  <div key={course._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border rounded-xl shadow-sm">
+                    <div className="col-span-1 text-sm font-medium text-gray-400">{index + 1}</div>
+                    <div className="col-span-2"><span className="bg-slate-100 px-2 py-1 rounded font-mono font-bold text-sm">{course.courseCode}</span></div>
+                    <div className="col-span-3 font-bold text-gray-800">{course.courseName}</div>
+                    <div className="col-span-4 text-center text-xs text-gray-500 italic">
+                      {course.offeringDept} | {course.session} | Slot: {course.slot}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-gray-800 text-lg leading-tight">{course.courseName}</h3>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1 text-sm text-gray-500">
-                        <span><span className="font-semibold">Dept:</span> {course.offeringDept}</span>
-                        <span><span className="font-semibold">Session:</span> {course.session}</span>
-                        <span><span className="font-semibold">Slot:</span> {course.slot}</span>
-                      </div>
-                    </div>
-                    <div className="min-w-[120px] flex justify-end">
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase ${
-                        course.status === 'proposed' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {course.status}
-                      </span>
+                    <div className="col-span-2 text-right">
+                      <span className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase border ${
+              course.status === 'enrolling' ? 'bg-green-50 text-green-700 border-green-200' : 
+              course.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' : 
+              'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
+              {course.status}
+            </span>
                     </div>
                   </div>
                 ))}
@@ -157,17 +197,59 @@ const AdvisorDashboard = () => {
           </div>
         )}
 
-        {/* --- HELP TAB --- */}
-        {activeTab === "Help" && (
+        {/* --- APPROVE COURSES TAB --- */}
+        {activeTab === "Approve Courses" && (
           <div className="animate-fadeIn">
-            <h2 className="text-xl font-bold mb-4">Instructor Support</h2>
-            <p className="text-gray-700">
-              For portal issues, email: <span className="font-bold text-blue-600">aims_help@iitrpr.ac.in</span>
-              <br />
-              
-            </p>
+            <div className="flex justify-between items-end mb-6 border-b pb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-indigo-900">Departmental Approvals</h2>
+                <p className="text-xs text-gray-500">Review proposals submitted by all faculty members.</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleProposalAction('approve')} className="bg-emerald-600 text-white px-5 py-2 rounded shadow-md text-sm font-bold hover:bg-emerald-700 transition-all">Approve Selected</button>
+                <button onClick={() => handleProposalAction('reject')} className="bg-rose-600 text-white px-5 py-2 rounded shadow-md text-sm font-bold hover:bg-rose-700 transition-all">Reject Selected</button>
+              </div>
+            </div>
+
+            {/* Table Headings */}
+            <div className="grid grid-cols-12 gap-4 px-5 mb-3 text-xs font-bold uppercase text-gray-400 tracking-wider">
+              <div className="col-span-1 flex items-center">
+                <input type="checkbox" className="rounded" onChange={(e) => {
+                  if (e.target.checked) setSelectedIds(allProposedCourses.map(c => c._id));
+                  else setSelectedIds([]);
+                }} />
+                <span className="ml-4">S.No</span>
+              </div>
+              <div className="col-span-2">Code</div>
+              <div className="col-span-3">Course Name</div>
+              <div className="col-span-4 text-center">Instructor & Details</div>
+              <div className="col-span-2 text-right">Status</div>
+            </div>
+
+            {loadingProposals ? <p className="text-center py-10">Fetching Proposals...</p> : allProposedCourses.length === 0 ? <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-gray-400">All caught up! No pending proposals.</div> : (
+              <div className="space-y-3">
+                {allProposedCourses.map((course, index) => (
+                  <div key={course._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border rounded-xl shadow-sm hover:ring-2 hover:ring-indigo-100 transition-all">
+                    <div className="col-span-1 flex items-center">
+                      <input type="checkbox" className="rounded text-indigo-600" checked={selectedIds.includes(course._id)} onChange={() => toggleSelection(course._id)} />
+                      <span className="ml-5 text-sm font-medium text-gray-400">{index + 1}</span>
+                    </div>
+                    <div className="col-span-2"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded font-bold text-sm border border-indigo-100">{course.courseCode}</span></div>
+                    <div className="col-span-3 font-bold text-gray-800">{course.courseName}</div>
+                    <div className="col-span-4 text-center text-xs text-gray-500">
+                      <p className="font-semibold text-indigo-900">{course.instructorId?.email || "Faculty"}</p>
+                      <p>{course.offeringDept} | {course.session} | Slot: {course.slot}</p>
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <span className="bg-amber-100 text-amber-800 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-inner">Proposed</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
       </main>
     </div>
   );

@@ -65,18 +65,13 @@ export const addCourse = async (req, res) => {
 };
 
 // 3. Get My Courses Controller
+// 3. Get My Courses Controller (FIXED VERSION)
 export const getMyCourses = async (req, res) => {
   try {
-    // 1. Find the instructor's specific course list
-    const instructorProfile = await CourseInstructor.findOne({ userId: req.userId });
-
-    if (!instructorProfile || instructorProfile.courses.length === 0) {
-      return res.json([]); // Return empty array if no courses yet
-    }
-
-    // 2. Fetch full details for all course codes in that instructor's list
+    // DO NOT use CourseInstructor. courses can have duplicate codes across different sessions.
+    // Fetch directly from the Course collection using your unique ID.
     const courses = await Course.find({ 
-      courseCode: { $in: instructorProfile.courses } 
+      instructorId: req.userId 
     }).sort({ _id: -1 });
 
     res.status(200).json(courses);
