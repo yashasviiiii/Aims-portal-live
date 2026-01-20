@@ -61,7 +61,7 @@ useEffect(() => {
       fetchRecords();
     }
   }, [activeTab]);
-  
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <StudentNavbar rollNumber={roll} setActiveTab={setActiveTab} />
@@ -84,10 +84,7 @@ useEffect(() => {
             </div>
           </div>
         )}
-
-        {/* --- COURSES TAB (The Registration View) --- */}
-        {activeTab === "Courses" && <CoursesSection />}
-
+        
         {/* --- RECORD TAB (Finalized Courses) --- */}
         {activeTab === "Record" && (
           <div className="animate-fadeIn">
