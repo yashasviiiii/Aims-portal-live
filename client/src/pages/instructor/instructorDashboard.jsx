@@ -4,7 +4,7 @@ import axios from "axios";
 
 const InstructorDashboard = () => {
   // --- States ---
-  const [instructorData, setInstructorData] = useState(null);
+  const [instructorData, setInstructorData] = useState("Loading...");
   const [activeTab, setActiveTab] = useState("Home");
   const [myCourses, setMyCourses] = useState([]);
   const [pendingEnrollments, setPendingEnrollments] = useState([]);
@@ -24,7 +24,8 @@ const InstructorDashboard = () => {
         setInstructorData(response.data.instructor);
       } catch (error) {
         console.error("Profile fetch failed");
-        setInstructorData({ name: "Instructor" });
+        const backupEmail = localStorage.getItem("userEmail");
+        setInstructorData(backupEmail ? backupEmail.split('@')[0] : "Instructor");
       }
     };
     fetchProfile();
@@ -70,7 +71,7 @@ const InstructorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <InstructorNavbar name={instructorData?.name || "Instructor"} setActiveTab={setActiveTab} />
+      <InstructorNavbar name={instructorData.name} setActiveTab={setActiveTab} />
       
       <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
         
@@ -185,15 +186,22 @@ const InstructorDashboard = () => {
             </div>
 
             {/* Status */}
-            <div className="col-span-2 text-right">
-              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                course.status === 'open' 
-                  ? 'bg-green-50 text-green-700 border-green-200' 
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
-              }`}>
-                {course.status === 'open' ? 'Enrolling' : 'Proposed'}
-              </span>
-            </div>
+<div className="col-span-2 text-right">
+  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+    course.status === 'enrolling' 
+      ? 'bg-green-50 text-green-700 border-green-200' 
+      : course.status === 'rejected'
+      ? 'bg-red-50 text-red-700 border-red-200'
+      : 'bg-amber-50 text-amber-700 border-amber-200'
+  }`}>
+    {/* Map the DB string to a user-friendly label */}
+    {course.status === 'enrolling' && 'Enrolling'}
+    {course.status === 'rejected' && 'Rejected'}
+    {course.status === 'proposed' && 'Proposed'}
+    {/* Fallback for safety */}
+    {!['enrolling', 'rejected', 'proposed'].includes(course.status) && course.status}
+  </span>
+</div>
           </div>
         ))}
       </div>

@@ -24,19 +24,19 @@ export const requireStudent = (req, res, next) => {
   next();
 };
 
-export const requireFA = (req, res, next) => {
-  if (req.role !== "FA") {
-    return res.status(403).json({ message: "FA access only" });
-  }
-  next();
+export const authorizeRoles = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.role)) {
+      return res.status(403).json({ 
+        message: `Access denied. Required: ${allowedRoles.join(" or ")}` 
+      });
+    }
+    next();
+  };
 };
 
-export const requireInstructor = (req, res, next) => {
-  if (req.role !== "COURSE_INSTRUCTOR") {
-    return res.status(403).json({ message: "Course Instructor access only" });
-  }
-  next();
-};
+export const requireFA = authorizeRoles("FA");
+export const requireInstructor = authorizeRoles("COURSE_INSTRUCTOR", "FA"); // FA can now do Instructor tasks
 
 export const requireAdmin = (req, res, next) => {
   if (req.role !== "ADMIN") {
