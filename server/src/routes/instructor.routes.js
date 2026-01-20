@@ -1,16 +1,33 @@
 import express from "express";
-import { verifyJWT } from "../middleware/auth.middleware.js";
+import { requireInstructor, verifyJWT } from "../middleware/auth.middleware.js";
 import { 
-  studentDashboard, 
-  getAllCourses, 
-  creditCourses 
-} from "../controllers/student.controller.js";
+  instructorDashboard, 
+  addCourse, 
+  getMyCourses,
+  getPendingEnrollments,
+  handleStudentRequest
+} from "../controllers/instructor.controller.js";
 
 const router = express.Router();
 
-router.get("/dashboard", verifyJWT, studentDashboard);
-router.get("/courses", verifyJWT, getAllCourses);
-router.post("/credit", verifyJWT, creditCourses);
+// --- DASHBOARD & COURSE MANAGEMENT ---
 
-// THIS IS THE MISSING LINE CAUSING THE ERROR:
+// Get instructor profile data
+router.get("/dashboard", verifyJWT, requireInstructor, instructorDashboard);
+
+// Get courses proposed/added by this instructor
+router.get("/my-courses", verifyJWT, requireInstructor, getMyCourses);
+
+// Instructor proposes a new course (Status starts as 'proposed')
+router.post("/add-course", verifyJWT, requireInstructor, addCourse);
+
+
+// --- STUDENT ENROLLMENT WORKFLOW ---
+
+// 1. Get students who applied for this instructor's courses (Status: 'pending_instructor')
+router.get("/pending-enrollments", verifyJWT, requireInstructor, getPendingEnrollments);
+
+// 2. Instructor approves/rejects student (Moves status to 'pending_fa' or 'rejected')
+router.post("/handle-student-request", verifyJWT, requireInstructor, handleStudentRequest);
+
 export default router;

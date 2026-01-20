@@ -25,16 +25,19 @@ export const studentDashboard = async (req, res) => {
   }
 };
 
-// Get all courses and check if student is already enrolled
+// CHANGE: Modify the query to status: "open"
 export const getAllCourses = async (req, res) => {
   try {
-    const courses = await Course.find();
+    const courses = await Course.find({ status: "open" }); // Only show FA-approved courses
     const myEnrollments = await Enrollment.find({ studentId: req.userId });
     
-    // Map courses to include a 'isCredited' flag
     const coursesWithStatus = courses.map(course => {
       const enrolled = myEnrollments.find(e => e.courseId.toString() === course._id.toString());
-      return { ...course._doc, isCredited: !!enrolled };
+      return { 
+        ...course._doc, 
+        isCredited: enrolled?.status === "approved",
+        enrollmentStatus: enrolled ? enrolled.status : "not_applied" 
+      };
     });
 
     res.json(coursesWithStatus);
@@ -43,20 +46,37 @@ export const getAllCourses = async (req, res) => {
   }
 };
 
-// Request to Credit/Enroll
+// CHANGE: Update status to 'pending_instructor' and include instructorId
 export const creditCourses = async (req, res) => {
   try {
-    const { courseIds } = req.body; // Array of selected course IDs
+    const { courseIds } = req.body; 
     
-    const enrollmentRequests = courseIds.map(id => ({
-      studentId: req.userId,
-      courseId: id,
-      status: 'pending'
+    const enrollmentRequests = await Promise.all(courseIds.map(async (id) => {
+      const course = await Course.findById(id);
+      return {
+        studentId: req.userId,
+        courseId: id,
+        instructorId: course.instructorId, // Required for instructor to see the request
+        status: 'pending_instructor'      // Workflow Stage 1
+      };
     }));
 
     await Enrollment.insertMany(enrollmentRequests);
-    res.json({ message: "Request sent to instructor for approval" });
+    res.json({ message: "Requests sent to instructor" });
   } catch (err) {
     res.status(500).json({ message: "Enrollment failed" });
+  }
+};
+
+// Added the missing function that the router expects
+export const getMyRecords = async (req, res) => {
+  try {
+    const records = await Enrollment.find({ 
+      studentId: req.userId, 
+      status: "approved" 
+    }).populate('courseId');
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching records" });
   }
 };

@@ -1,28 +1,24 @@
-import Student from "../models/Students.js";
+import express from "express";
+import { verifyJWT } from "../middleware/auth.middleware.js";
+import { 
+  studentDashboard, 
+  getAllCourses, 
+  creditCourses, 
+  getMyRecords 
+} from "../controllers/student.controller.js";
 
-export const studentDashboard = async (req, res) => {
-  try {
-    // Fetch student details from DB using the ID attached by verifyJWT
-    const student = await Student.findById(req.userId).select("-password");
+const router = express.Router();
 
-    if (!student) {
-      return res.status(404).json({ message: "Student record not found" });
-    }
+// 1. Student Profile/Dashboard Data
+router.get("/dashboard", verifyJWT, studentDashboard);
 
-    // This preserves your existing functionality (res.json) 
-    // while adding the 'student' data needed for the UI
-    res.json({
-      message: "Student dashboard accessed",
-      userId: req.userId,
-      role: req.role,
-      student: {
-        name: student.name,
-        rollNumber: student.rollNumber || "N/A", // Ensure your model has this field
-        email: student.email
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-export default studentDashboard;
+// 2. Fetch courses that are FA-Approved (status: 'open')
+router.get("/courses", verifyJWT, getAllCourses);
+
+// 3. Student requests to enroll (Starts the 'pending_instructor' chain)
+router.post("/credit", verifyJWT, creditCourses);
+
+// 4. Fetch final records (Status: 'approved')
+router.get("/my-records", verifyJWT, getMyRecords);
+
+export default router;

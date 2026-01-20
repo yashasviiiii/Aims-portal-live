@@ -1,6 +1,10 @@
 import React from 'react';
 
 const StudentNavbar = ({ rollNumber, setActiveTab }) => {
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/";
+  };
   return (
     <nav className="bg-slate-800 text-white shadow-md">
       {/* Top Bar */}
@@ -8,7 +12,12 @@ const StudentNavbar = ({ rollNumber, setActiveTab }) => {
         <h1 className="text-2xl font-bold tracking-wider">AIMS</h1>
         <div className="flex items-center gap-4">
           <span className="bg-slate-700 px-3 py-1 rounded text-sm font-mono">{rollNumber}</span>
-          <button className="hover:text-red-400 transition-colors font-medium">Logout</button>
+          <button 
+            onClick={handleLogout}
+            className="hover:text-red-300 transition-colors font-medium text-sm"
+          >
+            Logout
+          </button>
         </div>
       </div>
       

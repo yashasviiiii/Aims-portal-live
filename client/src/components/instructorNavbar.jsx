@@ -3,7 +3,7 @@ import React from 'react';
 const InstructorNavbar = ({ name, setActiveTab }) => {
   const handleLogout = () => {
     localStorage.clear();
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   return (
