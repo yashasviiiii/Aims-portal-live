@@ -6,6 +6,7 @@ import VerifyOtp from "./pages/auth/VerifyOtp.jsx";
 import StudentDashboard from "./pages/student/studentDashboard.jsx";
 import InstructorDashboard from "./pages/instructor/instructorDashboard.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import AdvisorDashboard from "./pages/facultyAdvisor/advisorDashboard.jsx";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/instructor-dashboard" element={ <InstructorDashboard />} />
+        <Route path="/fa-dashboard" element={ <AdvisorDashboard />} />
         <Route path="/admin" element={<ProtectedRoute role="ADMIN"> <AdminDashboard /> </ProtectedRoute> }/>
       </Routes>
     </BrowserRouter>

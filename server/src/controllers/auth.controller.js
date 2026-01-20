@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Name from "../models/name.js";
 import { sendOTP } from "../utils/mailer.js";
-import { isInstituteEmail } from "../utils/email.utils.js";
+import { isInstituteEmail } from "../utils/emails.utils.js";
 import { extractEntryNumber } from "../utils/entry.utils.js";
 
 
@@ -45,20 +45,32 @@ export const signup = async (req, res) => {
       }
     }
 
-    // 4️⃣ CREATE USER
-    const user = await Name.create({
+    // 4️⃣ CHECK DUPLICATE USER
+    const existing = await Name.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // 🔴 5️⃣ GENERATE OTP (MISSING BEFORE)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = Date.now() + 10 * 60 * 1000;
+
+    // 6️⃣ CREATE USER WITH OTP
+    await Name.create({
       email,
       password: await bcrypt.hash(password, 10),
       role,
       firstName,
       lastName,
       department,
-      entryNumber, // 👈 stored only for students
+      entryNumber,
+      otp,
+      otpExpiry,
       isVerified: false,
       accountStatus: role === "STUDENT" ? "ACTIVE" : "PENDING",
     });
 
-    // send OTP logic remains same…
+    await sendOTP(email, otp);
 
     res.status(201).json({
       message: "Signup successful. OTP sent to email.",
