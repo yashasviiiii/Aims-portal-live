@@ -44,7 +44,6 @@ export const creditCourses = async (req, res) => {
   try {
     const { courseIds } = req.body; 
     
-    // Check for existing enrollments to prevent duplicates
     const existing = await Enrollment.find({ 
         studentId: req.userId, 
         courseId: { $in: courseIds } 
@@ -59,20 +58,33 @@ export const creditCourses = async (req, res) => {
 
     const enrollmentRequests = await Promise.all(newCourseIds.map(async (id) => {
       const course = await Course.findById(id);
+      
+      // FIX 1: Prevent crash if course is null
+      if (!course) {
+        throw new Error(`Course with ID ${id} not found`);
+      }
+
       return {
         studentId: req.userId,
         courseId: id,
-        instructorId: course.instructorId, 
+        instructorId: course.instructorId, // This only runs if course exists
+        session: course.session,
         status: 'pending_instructor'      
       };
     }));
 
     await Enrollment.insertMany(enrollmentRequests);
-    res.json({ message: "Requests sent to instructor successfully" });
+    
+    // FIX 2: Use status 201 for created resources
+    res.status(201).json({ message: "Requests sent to instructor successfully" });
+    
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Enrollment failed" });
-  }
+  console.error("DETAILED ERROR:", err); // Look at your terminal!
+  res.status(500).json({ 
+    message: "Enrollment failed", 
+    error: err.message // This will send the real error to your frontend alert
+  });
+}
 };
 
 export const getMyRecords = async (req, res) => {

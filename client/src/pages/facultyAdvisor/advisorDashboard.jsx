@@ -173,6 +173,13 @@ const handleFinalFAAction = async (action) => {
       : [...prev, enrollId]
   );
 };
+const toggleSelection = (id) => {
+  setSelectedIds((prev) =>
+    prev.includes(id) 
+      ? prev.filter((item) => item !== id) 
+      : [...prev, id]
+  );
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
