@@ -1,7 +1,6 @@
 import Course from "../models/Course.js";
 import Enrollment from '../models/Enrollment.js';
 import Name from "../models/name.js";
-import CourseInstructor from "../models/CourseInstructor.js";
 
 export const instructorDashboard = async (req, res) => {
   try {
@@ -28,13 +27,55 @@ export const instructorDashboard = async (req, res) => {
 
 export const addCourse = async (req, res) => {
   try {
-    const { courseCode, courseName, offeringDept, credits, session, slot } = req.body;
+    const {
+      courseCode,
+      courseName,
+      offeringDept,
+      credits,
+      session,
+      slot,
+      instructors,
+      allowedEntryYears
+    } = req.body;
 
-    // 1. Get Instructor details
-    const instructor = await Name.findById(req.userId);
-    if (!instructor) return res.status(404).json({ message: "Instructor not found" });
+    const creator = await Name.findById(req.userId);
+    if (!creator) {
+      return res.status(404).json({ message: "Instructor not found" });
+    }
 
-    // 2. Create the Course in the main Course collection
+    const finalInstructors = [];
+
+    // 🔹 Auto-add creator as coordinator
+    finalInstructors.push({
+      instructorId: creator._id,
+      name: `${creator.firstName} ${creator.lastName}`,
+      isCoordinator: true
+    });
+
+    // 🔹 Resolve other instructors by NAME
+    for (const inst of instructors) {
+      const found = await Name.findOne({
+        $expr: {
+          $eq: [
+            { $concat: ["$firstName", " ", "$lastName"] },
+            inst.name
+          ]
+        }
+      });
+
+      if (!found) {
+        return res.status(400).json({
+          message: `Instructor not found: ${inst.name}`
+        });
+      }
+
+      finalInstructors.push({
+        instructorId: found._id,
+        name: inst.name,
+        isCoordinator: inst.isCoordinator
+      });
+    }
+
     const newCourse = await Course.create({
       courseCode,
       courseName,
@@ -42,26 +83,19 @@ export const addCourse = async (req, res) => {
       credits: Number(credits),
       session,
       slot,
-      instructor: instructor.email.split('@')[0],
-      instructorId: req.userId,
-      status: 'proposed'
+      allowedEntryYears,
+      instructors: finalInstructors,
+      status: "proposed"
     });
 
-    // 3. Update the CourseInstructor schema (The list of courses for this instructor)
-    // This finds the instructor's record and adds the new course code to their array
-    await CourseInstructor.findOneAndUpdate(
-      { userId: req.userId },
-      { $addToSet: { courses: courseCode } }, // $addToSet prevents duplicate codes
-      { upsert: true, new: true } // Creates the record if it doesn't exist
-    );
-
-    res.status(201).json({ 
-      message: "Course proposed and added to your profile successfully", 
-      course: newCourse 
+    res.status(201).json({
+      message: "Course proposed successfully",
+      course: newCourse
     });
-  } catch (error) {
-    console.error("Submission Error:", error);
-    res.status(500).json({ message: "Error processing request", error: error.message });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
@@ -71,9 +105,10 @@ export const getMyCourses = async (req, res) => {
   try {
     // DO NOT use CourseInstructor. courses can have duplicate codes across different sessions.
     // Fetch directly from the Course collection using your unique ID.
-    const courses = await Course.find({ 
-      instructorId: req.userId 
-    }).sort({ _id: -1 });
+    const courses = await Course.find({
+      "instructors.instructorId": req.userId
+    });
+
 
     res.status(200).json(courses);
   } catch (err) {
@@ -131,6 +166,20 @@ export const getCourseEnrollments = async (req, res) => {
     res.status(500).json({ message: "Error fetching students" });
   }
 };
+
+// get all instructors for auto filling when adding course
+export const getAllInstructors = async (req, res) => {
+  try {
+    const instructors = await Name.find(
+      { role: "COURSE_INSTRUCTOR" },
+      "_id firstName lastName email"
+    );
+    res.status(200).json(instructors);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch instructors" });
+  }
+};
+
 
 export const handleInstructorAction = async (req, res) => {
   try {
