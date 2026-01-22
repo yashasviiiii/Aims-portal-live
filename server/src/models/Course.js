@@ -1,30 +1,37 @@
 import mongoose from 'mongoose';
 
 const courseSchema = new mongoose.Schema({
-  courseCode: { type: String, required: true },
-  courseName: { type: String, required: true },
-  offeringDept: { type: String, required: true },
-  credits: { type: Number, required: true },
+  courseCode: String,
+  courseName: String,
+  offeringDept: String,
+  credits: Number,
+  session: String,
+  slot: String,
 
-  session: { type: String, required: true }, // e.g. 2024-I
-  slot: { type: String, required: true },    // e.g. PCE-1
+  allowedEntryYears: [Number],
 
-  // 🔹 MULTIPLE INSTRUCTORS
-  instructors: [{
-    instructorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Name', required: true },
-    isCoordinator: { type: Boolean, default: false }
-  }],
-
-  // 🔹 COURSE AVAILABLE TO WHICH ENTRY YEARS
-  allowedEntryYears: {
-    type: [Number], // e.g. [2019, 2020]
-    required: true
-  },
+  instructors: [
+    {
+      instructorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Name",
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      },
+      isCoordinator: {
+        type: Boolean,
+        default: false
+      }
+    }
+  ],
 
   status: {
     type: String,
-    enum: ['proposed', 'enrolling', 'completed', 'rejected'],
-    default: 'proposed'
+    enum: ["proposed", "enrolling", "completed", "rejected"],
+    default: "proposed"
   }
 
 }, { timestamps: true });

@@ -22,14 +22,55 @@ export const faDashboard = async (req, res) => {
 
 export const addCourse = async (req, res) => {
   try {
-    const { courseCode, courseName, offeringDept, credits, session, slot } = req.body;
+    const {
+      courseCode,
+      courseName,
+      offeringDept,
+      credits,
+      session,
+      slot,
+      instructors,
+      allowedEntryYears
+    } = req.body;
 
-    // 1. Get FA/User details directly from the Name model
-    const user = await Name.findById(req.userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const creator = await Name.findById(req.userId);
+    if (!creator) {
+      return res.status(404).json({ message: "Instructor not found" });
+    }
 
-    // 2. Create the Course directly
-    // We use req.userId as the instructorId regardless of their role
+    const finalInstructors = [];
+
+    // 🔹 Auto-add creator as coordinator
+    finalInstructors.push({
+      instructorId: creator._id,
+      name: `${creator.firstName} ${creator.lastName}`,
+      isCoordinator: true
+    });
+
+    // 🔹 Resolve other instructors by NAME
+    for (const inst of instructors) {
+      const found = await Name.findOne({
+        $expr: {
+          $eq: [
+            { $concat: ["$firstName", " ", "$lastName"] },
+            inst.name
+          ]
+        }
+      });
+
+      if (!found) {
+        return res.status(400).json({
+          message: `Instructor not found: ${inst.name}`
+        });
+      }
+
+      finalInstructors.push({
+        instructorId: found._id,
+        name: inst.name,
+        isCoordinator: inst.isCoordinator
+      });
+    }
+
     const newCourse = await Course.create({
       courseCode,
       courseName,
@@ -37,28 +78,27 @@ export const addCourse = async (req, res) => {
       credits: Number(credits),
       session,
       slot,
-      instructor: user.email.split('@')[0], // Derives name from email
-      instructorId: req.userId,
-      status: 'proposed'
+      allowedEntryYears,
+      instructors: finalInstructors,
+      status: "proposed"
     });
 
-    // NOTE: We skip the CourseInstructor model update to avoid 
-    // dependency on a specific instructor profile.
-
-    res.status(201).json({ 
-      message: "Course proposed successfully", 
-      course: newCourse 
+    res.status(201).json({
+      message: "Course proposed successfully",
+      course: newCourse
     });
-  } catch (error) {
-    console.error("Submission Error:", error);
-    res.status(500).json({ message: "Error processing request", error: error.message });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 // 3. Get My Courses Controller
 // 2. Get My Courses: Fetches only what the logged-in user created
 export const getMyCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ instructorId: req.userId }).sort({ _id: -1 });
+    const courses = await Course.find({"instructors.instructorId": req.userId});
     res.status(200).json(courses);
   } catch (err) {
     res.status(500).json({ message: "Error fetching your courses" });

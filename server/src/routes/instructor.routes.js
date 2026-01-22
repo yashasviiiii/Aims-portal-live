@@ -7,7 +7,8 @@ import {
   getPendingEnrollments,
   handleStudentRequest,
   getCourseEnrollments,
-  handleInstructorAction
+  handleInstructorAction,
+  getAllInstructors
 } from "../controllers/instructor.controller.js";
 
 const router = express.Router();
@@ -22,7 +23,12 @@ router.get("/my-courses", verifyJWT, requireInstructor, getMyCourses);
 
 // Instructor proposes a new course (Status starts as 'proposed')
 router.post("/add-course", verifyJWT, requireInstructor, addCourse);
-
+router.get(
+  "/all",
+  verifyJWT,
+  requireInstructor, // or requireFA if needed
+  getAllInstructors
+);
 
 // --- STUDENT ENROLLMENT WORKFLOW ---
 
