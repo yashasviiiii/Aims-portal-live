@@ -34,7 +34,7 @@ export const signup = async (req, res) => {
 
     // 3️⃣ STUDENT ENTRY NUMBER EXTRACTION
     let entryNumber = null;
-
+    let year = null;
     if (role === "STUDENT") {
       entryNumber = extractEntryNumber(email);
 
@@ -43,6 +43,7 @@ export const signup = async (req, res) => {
           message: "Invalid student email format for entry number",
         });
       }
+      year = parseInt(entryNumber.substring(0, 4));
     }
 
     // 4️⃣ CHECK DUPLICATE USER
@@ -68,6 +69,7 @@ export const signup = async (req, res) => {
       otpExpiry,
       isVerified: false,
       accountStatus: role === "STUDENT" ? "ACTIVE" : "PENDING",
+      year: year
     });
 
     await sendOTP(email, otp);
