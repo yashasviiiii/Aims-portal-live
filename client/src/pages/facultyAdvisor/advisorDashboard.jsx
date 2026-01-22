@@ -262,7 +262,10 @@ const AdvisorDashboard = () => {
                 <div className="grid grid-cols-12 gap-4 px-5 mb-3 text-xs font-bold uppercase text-gray-400">
                   <div className="col-span-2">Code</div>
                   <div className="col-span-5">Course Name</div>
-                  <div className="col-span-3">Instructor</div>
+                  {/* Inside enrollingCourses.map(course => ...) */}
+<div className="col-span-3 text-sm text-gray-500">
+  {course.instructors?.[0]?.instructorId?.lastName || "Faculty"}
+</div>
                   <div className="col-span-2 text-right">Action</div>
                 </div>
                 {loadingEnrolling ? <p className="text-center py-10">Loading...</p> : (
@@ -390,10 +393,22 @@ const AdvisorDashboard = () => {
                     </div>
                     <div className="col-span-2"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded font-bold text-sm border border-indigo-100">{course.courseCode}</span></div>
                     <div className="col-span-3 font-bold text-gray-800">{course.courseName}</div>
-                    <div className="col-span-4 text-center text-xs text-gray-500">
-                      <p className="font-semibold text-indigo-900">{course.instructorId?.email || "Faculty"}</p>
-                      <p>{course.offeringDept} | {course.session} | Slot: {course.slot}</p>
-                    </div>
+                    {/* Inside allProposedCourses.map((course, index) => ...) */}
+
+<div className="col-span-4 text-center text-xs text-gray-500">
+  {/* Map through the instructors array to show names/emails */}
+  {course.instructors && course.instructors.length > 0 ? (
+    course.instructors.map((inst, i) => (
+      <p key={i} className="font-semibold text-indigo-900">
+        Prof. {inst.instructorId?.firstName} {inst.instructorId?.lastName} 
+        <span className="text-[9px] text-gray-400 ml-1">({inst.instructorId?.email})</span>
+      </p>
+    ))
+  ) : (
+    <p className="font-semibold text-red-400">Instructor Data Missing</p>
+  )}
+  <p>{course.offeringDept} | {course.session} | Slot: {course.slot}</p>
+</div>
                     <div className="col-span-2 text-right">
                       <span className="bg-amber-100 text-amber-800 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-inner">Proposed</span>
                     </div>

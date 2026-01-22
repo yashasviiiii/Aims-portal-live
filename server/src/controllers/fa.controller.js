@@ -109,14 +109,14 @@ export const getMyCourses = async (req, res) => {
 
 export const getProposedCourses = async (req, res) => {
   try {
-    // Find courses where status is exactly 'proposed'
+    // FIX: Changed from 'instructorId' to 'instructors.instructorId'
     const proposals = await Course.find({ status: 'proposed' })
-      .populate('instructorId', 'name email'); // This fills the instructorId with actual data
+      .populate('instructors.instructorId', 'firstName lastName email'); 
 
     res.status(200).json(proposals);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch details" });
+    console.error("FA Proposal Error:", err);
+    res.status(500).json({ message: "Failed to fetch details", error: err.message });
   }
 };
 
@@ -192,3 +192,7 @@ export const handleFinalFAAction = async (req, res) => {
     res.status(500).json({ message: "Final approval failed" });
   }
 };
+// backend/controllers/fa.controller.js
+
+// backend/controllers/fa.controller.js
+
