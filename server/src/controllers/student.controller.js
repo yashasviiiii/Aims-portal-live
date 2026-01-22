@@ -16,19 +16,31 @@ export const studentDashboard = async (req, res) => {
   }
 };
 
-// FETCH ONLY ENROLLING COURSES
+// FETCH COURSES FILTERED BY STUDENT'S ENTRY YEAR
 export const getAllCourses = async (req, res) => {
   try {
-    // UPDATED: Now looks for 'enrolling' instead of 'open'
-    const courses = await Course.find({ status: "enrolling" }); 
-    
+    const user = await Name.findById(req.userId); 
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const courses = await Course.find({ 
+      status: "enrolling",
+      allowedEntryYears: user.year 
+    }).populate('instructors.instructorId', 'firstName lastName'); // Populate names
+
     const myEnrollments = await Enrollment.find({ studentId: req.userId });
-    
+
     const coursesWithStatus = courses.map(course => {
       const enrolled = myEnrollments.find(e => e.courseId.toString() === course._id.toString());
+      
+      // Create a clean string of all professor names
+      const allProfNames = course.instructors
+        .map(i => i.instructorId ? `Prof. ${i.instructorId.firstName} ${i.instructorId.lastName}` : "Unknown Prof")
+        .join(", ");
+
       return { 
         ...course._doc, 
-        isCredited: enrolled?.status === "approved",
+        instructorDisplay: allProfNames, // New field for easy searching/display
+        isCredited: !!enrolled,
         enrollmentStatus: enrolled ? enrolled.status : "not_applied" 
       };
     });
@@ -103,40 +115,51 @@ export const getStudentRecord = async (req, res) => {
   try {
     const studentId = req.userId;
 
+    // 1. Fetch student details from the 'Name' model
+    // Using the fields confirmed in your database screenshot (image_1f32b6.png)
     const student = await Name.findById(studentId).select(
-      "firstName lastName department entryNumber email"
+      "firstName lastName department year email"
     );
 
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    // 2. Fetch enrollments and populate course details
     const enrollments = await Enrollment.find({
       studentId,
       status: "approved",
     }).populate("courseId");
 
-    if (!enrollments.length) {
+    // If no records found, return empty structure early
+    if (!enrollments || enrollments.length === 0) {
       return res.json({
-        student,   // ✅ FIX
+        student,
         records: [],
-        cgpa: null,
+        cgpa: 0,
       });
     }
 
     const sessions = {};
 
-    enrollments.forEach(e => {
-      const session = e.courseId.session;
+    // 3. Process enrollments into grouped sessions
+    enrollments.forEach((e) => {
+      // --- CRITICAL FIX: Skip if courseId is null (orphaned enrollment) ---
+      if (!e.courseId) {
+        console.warn(`Skipping enrollment ${e._id} because the course no longer exists.`);
+        return; 
+      }
 
-      if (!sessions[session]) {
-        sessions[session] = {
-          session,
+      const sessionName = e.courseId.session || "Unknown Session";
+
+      if (!sessions[sessionName]) {
+        sessions[sessionName] = {
+          session: sessionName,
           courses: [],
         };
       }
 
-      sessions[session].courses.push({
+      sessions[sessionName].courses.push({
         course: e.courseId,
         grade: e.grade || "NA",
         category: e.courseId.category || "Core",
@@ -146,14 +169,15 @@ export const getStudentRecord = async (req, res) => {
 
     const records = Object.values(sessions);
 
+    // 4. Return the formatted data
     return res.json({
-      student,   // ✅ FIX
+      student,
       records,
-      cgpa: null,
+      cgpa: null, // You can implement CGPA logic here later
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getStudentRecord:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };

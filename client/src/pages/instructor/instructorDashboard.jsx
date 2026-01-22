@@ -5,7 +5,10 @@ import axios from "axios";
 const InstructorDashboard = () => {
   // --- States ---
   const [instructorData, setInstructorData] = useState({ name: "Instructor" });
-  const [activeTab, setActiveTab] = useState("Home");
+  
+  // PERSISTENCE LOGIC: Initialize from localStorage or default to "Home"
+  const [activeTab, setActiveTab] = useState(localStorage.getItem("activeInstructorTab") || "Home");
+  
   const [myCourses, setMyCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
   
@@ -18,7 +21,7 @@ const InstructorDashboard = () => {
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
-  // --- Effects ---
+  // --- Effect 1: Load Profile Data ---
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -32,7 +35,11 @@ const InstructorDashboard = () => {
     fetchProfile();
   }, []);
 
+  // --- Effect 2: Tab Switching & Persistence Logic ---
   useEffect(() => {
+    // Save current tab to localStorage whenever it changes
+    localStorage.setItem("activeInstructorTab", activeTab);
+
     if (activeTab === "My Courses") {
       fetchMyCourses();
       setSelectedCourse(null); // Reset detail view when switching back to main tab
@@ -40,10 +47,10 @@ const InstructorDashboard = () => {
   }, [activeTab]);
 
   const toggleSelection = (id) => {
-  setSelectedEnrollments(prev => 
-    prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-  );
-};
+    setSelectedEnrollments(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
 
   const fetchMyCourses = async () => {
     setLoadingCourses(true);
@@ -89,13 +96,20 @@ const InstructorDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <InstructorNavbar name={instructorData.name} setActiveTab={setActiveTab} />
       
-      <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200">
+      <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200 min-h-[60vh]">
         
         {/* --- HOME TAB --- */}
         {activeTab === "Home" && (
           <div className="animate-fadeIn">
             <h2 className="text-xl font-bold text-indigo-900 mb-4">Instructor Portal</h2>
-            <p className="text-gray-600 font-medium italic">"Empowering academic excellence through streamlined management."</p>
+            <p className="text-gray-600">Welcome to the Academic Information Management System</p>
+            <div className="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400">
+              <p className="text-blue-800 font-medium">Quick Actions:</p>
+              <ul className="list-disc ml-5 mt-2 text-blue-700">
+                <li>Use <b>Add Course</b> to launch new enrollments.</li>
+                <li>Check <b>My Courses</b> to see your proposed or enrolling subjects.</li>
+              </ul>
+            </div>
           </div>
         )}
 
@@ -109,7 +123,7 @@ const InstructorDashboard = () => {
                try {
                  await axios.post('http://localhost:5000/api/instructor/add-course', data, config);
                  alert("Course submitted for Faculty Advisor approval");
-                 setActiveTab("My Courses"); 
+                 setActiveTab("My Courses"); // Logic will now persist this choice
                } catch (err) { alert("Submission failed"); }
              }} className="grid grid-cols-2 gap-4">
                <div className="col-span-1"><label className="text-sm font-semibold">Course Code</label>
@@ -124,7 +138,7 @@ const InstructorDashboard = () => {
                  <input name="session" className="w-full p-2 border rounded" required /></div>
                <div className="col-span-1"><label className="text-sm font-semibold">Slot</label>
                  <input name="slot" className="w-full p-2 border rounded" required /></div>
-               <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold">Submit Proposal</button>
+               <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700 transition shadow-md">Submit Proposal</button>
              </form>
            </div>
         )}
@@ -134,7 +148,7 @@ const InstructorDashboard = () => {
           <div className="animate-fadeIn">
             {!selectedCourse ? (
               <>
-                <h2 className="text-2xl font-bold text-indigo-900 mb-6">My Course Offerings</h2>
+                <h2 className="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">My Course Offerings</h2>
                 {/* Headers */}
                 <div className="grid grid-cols-12 gap-4 px-5 mb-2 text-xs font-bold uppercase text-gray-500 tracking-wider">
                   <div className="col-span-1">S.No</div>
@@ -222,18 +236,14 @@ const InstructorDashboard = () => {
                        courseStudents.map((enroll, i) => (
                         <tr key={enroll._id} className="border-t hover:bg-indigo-50/30 transition">
                           <td className="p-4">
-                            {/* The checkbox should only appear for pending students */}
                             {enroll.status === 'pending_instructor' ? (
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                                // 1. Control the checked state
                                 checked={selectedEnrollments.includes(enroll._id)}
-                                // 2. Call the toggle function
                                 onChange={() => toggleSelection(enroll._id)}
                               />
                             ) : (
-                              // If already approved/forwarded, show a small dot or nothing
                               <div className="w-4 h-4 ml-1 rounded-full bg-gray-200"></div>
                             )}
                           </td>
@@ -245,10 +255,10 @@ const InstructorDashboard = () => {
                           <td className="p-4 text-right">
                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                                 enroll.status === 'approved' 
-                                  ? 'bg-green-100 text-green-700 border-green-200' // New: Enrolled style
+                                  ? 'bg-green-100 text-green-700 border-green-200' 
                                   : enroll.status === 'pending_fa' 
-                                  ? 'bg-purple-100 text-purple-700 border-purple-200' // Forwarded style
-                                  : 'bg-amber-100 text-amber-700 border-amber-200' // Pending Instructor style
+                                  ? 'bg-purple-100 text-purple-700 border-purple-200' 
+                                  : 'bg-amber-100 text-amber-700 border-amber-200'
                               }`}>
                                 {enroll.status === 'approved' 
                                   ? 'Enrolled' 
@@ -264,6 +274,25 @@ const InstructorDashboard = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+        {/* ---------------- HELP TAB ---------------- */}
+        {activeTab === "Help" && (
+          <div className="animate-fadeIn">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">
+              Help Desk
+            </h2>
+            <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl">
+              <p className="text-gray-700 mb-2 font-medium">
+                For technical issues or other queries, please contact:
+              </p>
+              <p className="text-xl">
+                <span className="text-gray-500 mr-2">Email:</span>
+                <a href="mailto:aims_help@iitrpr.ac.in" className="font-mono font-bold text-blue-600 hover:underline">
+                  aims_help@iitrpr.ac.in
+                </a>
+              </p>
+            </div>
           </div>
         )}
       </main>
