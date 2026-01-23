@@ -1,11 +1,12 @@
 import express from "express";
-import { verifyJWT } from "../middleware/auth.middleware.js";
+import { verifyJWT, requireStudent } from "../middleware/auth.middleware.js";
 import { 
   studentDashboard, 
   getAllCourses, 
   creditCourses, 
   getMyRecords,
-  getStudentRecord 
+  getStudentRecord,
+  downloadTranscript
 } from "../controllers/student.controller.js";
 
 const router = express.Router();
@@ -24,5 +25,7 @@ router.post("/credit", verifyJWT, creditCourses);
 router.get("/my-records", verifyJWT, getMyRecords);
 
 router.get("/record", verifyJWT, getStudentRecord);
+
+router.get("/download-transcript", verifyJWT, requireStudent, downloadTranscript);
 
 export default router;

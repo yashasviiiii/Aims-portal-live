@@ -121,35 +121,63 @@ const StudentDashboard = () => {
             {record?.student && (
               <>
                 <h1 className="text-xl font-bold border-b pb-2">Student Profile</h1>
+                <button
+                onClick={async () => {
+                  const token = localStorage.getItem("token");
 
-                <div className="bg-white rounded-xl shadow border p-6 grid md:grid-cols-6 gap-4">
-                  <div className="col-span-1">
+                  const res = await fetch(
+                    "http://localhost:5000/api/student/download-transcript",
+                    {
+                      headers: {
+                        Authorization: `Bearer ${token}`
+                      }
+                    }
+                  );
+
+                  const blob = await res.blob();
+                  const url = window.URL.createObjectURL(blob);
+
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "transcript.pdf";
+                  a.click();
+
+                  window.URL.revokeObjectURL(url);
+                }}
+
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700"
+                >
+                  Download Transcript (PDF)
+                </button>
+
+                <div className="bg-white rounded-xl shadow border p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4">
+                  <div className="col-span-1 sm:col-span-1">
                     <p className="text-xs text-gray-500 uppercase font-bold">First Name</p>
                     <p className="font-semibold text-gray-800">{record.student.firstName}</p>
                   </div>
 
-                  <div className="col-span-1">
+                  <div className="col-span-1 sm:col-span-1">
                     <p className="text-xs text-gray-500 uppercase font-bold">Last Name</p>
                     <p className="font-semibold text-gray-800">{record.student.lastName}</p>
                   </div>
 
-                  <div className="col-span-1">
+                  <div className="col-span-1 sm:col-span-1">
                     <p className="text-xs text-gray-500 uppercase font-bold">Roll No</p>
                     <p className="font-semibold text-gray-800">{record.student.email.split("@")[0]}</p>
                   </div>
 
-                  <div className="col-span-1">
+                  <div className="col-span-1 sm:col-span-1">
                     <p className="text-xs text-gray-500 uppercase font-bold">Department</p>
                     <p className="font-semibold text-gray-800">{record.student.department}</p>
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="col-span-1 sm:col-span-2 md:col-span-2">
                     <p className="text-xs text-gray-500 uppercase font-bold">Email</p>
                     <p className="font-semibold text-gray-800">{record.student.email}</p>
                   </div>
 
                   {typeof record.cgpa === "number" && (
-                    <div className="md:col-span-6 mt-4 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex justify-between items-center">
+                    <div className="md:col-span-6 mt-4 bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                       <div>
                         <p className="text-sm text-indigo-900 font-bold">Cumulative Grade Point Average</p>
                         <p className="text-xs text-indigo-700">Calculated based on all completed sessions</p>
@@ -170,12 +198,30 @@ const StudentDashboard = () => {
                   key={idx}
                   className="bg-white rounded-xl shadow border overflow-hidden"
                 >
-                  <div className="bg-slate-800 text-white px-5 py-3 text-sm font-bold flex justify-between">
-                    <span>Academic Session: {session.session}</span>
-                    <span className="text-slate-400">Semester {idx + 1}</span>
-                  </div>
+                <div className="bg-slate-800 text-white px-4 py-3 text-sm font-bold flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                  <span>Academic Session: {session.session}</span>
 
-                  <table className="w-full text-sm">
+                  <div className="flex gap-4 text-xs text-slate-200">
+                    <span>
+                      Credits:{" "}
+                      <span className="text-white font-black">
+                        {session.totalCredits}
+                      </span>
+                    </span>
+
+                    {typeof session.sgpa === "number" && (
+                      <span>
+                        SGPA:{" "}
+                        <span className="text-white font-black">
+                          {session.sgpa.toFixed(2)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-[700px] w-full text-sm">
                     <thead className="bg-slate-50 text-gray-600 border-b">
                       <tr>
                         <th className="p-3 text-left w-12">#</th>
@@ -210,6 +256,7 @@ const StudentDashboard = () => {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               ))}
           </div>

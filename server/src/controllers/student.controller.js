@@ -1,6 +1,9 @@
 import Name from "../models/name.js";
 import Course from '../models/Course.js';
 import Enrollment from '../models/Enrollment.js'; 
+import { gradePoints } from "../utils/gradePoints.js";
+import puppeteer from "puppeteer";
+import { transcriptHTML } from "../utils/transcriptTemplate.js";
 
 export const studentDashboard = async (req, res) => {
   try {
@@ -115,8 +118,6 @@ export const getStudentRecord = async (req, res) => {
   try {
     const studentId = req.userId;
 
-    // 1. Fetch student details from the 'Name' model
-    // Using the fields confirmed in your database screenshot (image_1f32b6.png)
     const student = await Name.findById(studentId).select(
       "firstName lastName department year email"
     );
@@ -125,13 +126,11 @@ export const getStudentRecord = async (req, res) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    // 2. Fetch enrollments and populate course details
     const enrollments = await Enrollment.find({
       studentId,
       status: "approved",
     }).populate("courseId");
 
-    // If no records found, return empty structure early
     if (!enrollments || enrollments.length === 0) {
       return res.json({
         student,
@@ -142,42 +141,178 @@ export const getStudentRecord = async (req, res) => {
 
     const sessions = {};
 
-    // 3. Process enrollments into grouped sessions
+    let totalCreditsAll = 0;
+    let totalPointsAll = 0;
+
     enrollments.forEach((e) => {
-      // --- CRITICAL FIX: Skip if courseId is null (orphaned enrollment) ---
-      if (!e.courseId) {
-        console.warn(`Skipping enrollment ${e._id} because the course no longer exists.`);
-        return; 
-      }
+      if (!e.courseId) return;
 
       const sessionName = e.courseId.session || "Unknown Session";
+      const credits = e.courseId.credits || 0;
+      const grade = e.grade;
 
       if (!sessions[sessionName]) {
         sessions[sessionName] = {
           session: sessionName,
           courses: [],
+          totalCredits: 0,
+          totalPoints: 0,
+          sgpa: null,
+        };
+      }
+
+      // Add course entry
+      sessions[sessionName].courses.push({
+        course: e.courseId,
+        grade: grade || "NA",
+        category: e.courseId.category || "Core",
+        status: e.status,
+      });
+
+      // GPA calculation (only if grade is valid)
+      if (grade && gradePoints[grade] !== undefined) {
+        const points = gradePoints[grade] * credits;
+
+        sessions[sessionName].totalCredits += credits;
+        sessions[sessionName].totalPoints += points;
+
+        totalCreditsAll += credits;
+        totalPointsAll += points;
+      }
+    });
+
+    // Compute SGPA per session
+    Object.values(sessions).forEach((s) => {
+      if (s.totalCredits > 0) {
+        s.sgpa = s.totalPoints / s.totalCredits;
+      } else {
+        s.sgpa = null;
+      }
+
+      // cleanup (optional)
+      delete s.totalPoints;
+    });
+
+    const cgpa =
+      totalCreditsAll > 0 ? totalPointsAll / totalCreditsAll : 0;
+
+    return res.json({
+      student,
+      records: Object.values(sessions),
+      cgpa,
+    });
+  } catch (err) {
+    console.error("Error in getStudentRecord:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const downloadTranscript = async (req, res) => {
+  try {
+    const studentId = req.userId;
+
+    const student = await Name.findById(studentId).select(
+      "firstName lastName department email"
+    );
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    const enrollments = await Enrollment.find({
+      studentId,
+      status: "approved",
+    }).populate("courseId");
+
+    const sessions = {};
+    let totalCreditsAll = 0;
+    let totalPointsAll = 0;
+
+    enrollments.forEach((e) => {
+      if (!e.courseId) return;
+
+      const sessionName = e.courseId.session || "Unknown Session";
+      const credits = e.courseId.credits || 0;
+      const grade = e.grade;
+
+      if (!sessions[sessionName]) {
+        sessions[sessionName] = {
+          session: sessionName,
+          courses: [],
+          totalCredits: 0,
+          totalPoints: 0,
+          sgpa: null,
         };
       }
 
       sessions[sessionName].courses.push({
-        course: e.courseId,
-        grade: e.grade || "NA",
-        category: e.courseId.category || "Core",
-        status: e.status,
+        courseCode: e.courseId.courseCode,
+        courseName: e.courseId.courseName,
+        credits,
+        grade: grade || "NA",
       });
+
+      if (grade && gradePoints[grade] !== undefined) {
+        const points = gradePoints[grade] * credits;
+
+        sessions[sessionName].totalCredits += credits;
+        sessions[sessionName].totalPoints += points;
+
+        totalCreditsAll += credits;
+        totalPointsAll += points;
+      }
     });
 
-    const records = Object.values(sessions);
-
-    // 4. Return the formatted data
-    return res.json({
-      student,
-      records,
-      cgpa: null, // You can implement CGPA logic here later
+    Object.values(sessions).forEach((s) => {
+      s.sgpa = s.totalCredits > 0 ? s.totalPoints / s.totalCredits : null;
+      delete s.totalPoints;
     });
+
+    const cgpa =
+      totalCreditsAll > 0 ? totalPointsAll / totalCreditsAll : null;
+
+    const transcriptData = {
+      student: {
+        firstName: `${student.firstName}`,
+        lastName: `${student.lastName}`,
+        rollNo: student.email.split("@")[0],
+        department: student.department,
+        email: student.email,
+      },
+      records: Object.values(sessions),
+      cgpa,
+    };
+
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+
+    await page.setContent(transcriptHTML(transcriptData), {
+      waitUntil: "networkidle0",
+    });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=transcript.pdf",
+    });
+
+    res.send(pdf);
 
   } catch (err) {
-    console.error("Error in getStudentRecord:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Transcript Error:", err);
+    res.status(500).json({
+      message: "Failed to generate transcript",
+      error: err.message,
+    });
   }
 };
