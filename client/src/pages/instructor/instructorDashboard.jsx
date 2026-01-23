@@ -87,16 +87,22 @@ const InstructorDashboard = () => {
 
   // --- Enrollment Handlers for Specific Course ---
   const fetchCourseStudents = async (courseId) => {
-    setLoadingStudents(true);
-    try {
-      const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${courseId}`, config);
-      setCourseStudents(res.data);
-    } catch (err) {
-      console.error("Failed to fetch students");
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
+  setLoadingStudents(true);
+  try {
+    const res = await axios.get(
+      `http://localhost:5000/api/instructor/course-students/${courseId}`,
+      config
+    );
+    setSelectedCourse(res.data.course);     
+    setCourseStudents(res.data.students);   
+
+  } catch (err) {
+    console.error("Failed to fetch students");
+  } finally {
+    setLoadingStudents(false);
+  }
+};
+
 
   const handleInstructorAction = async (action) => {
     if (selectedEnrollments.length === 0) return alert("Select students first");
@@ -392,7 +398,8 @@ const uploadGradesExcel = async (courseId, file) => {
                         <div className="col-span-1 text-gray-400 font-mono text-sm">{index + 1}</div>
                         <div className="col-span-2">
                           <button 
-                            onClick={() => { setSelectedCourse(course); fetchCourseStudents(course._id); }}
+                            onClick={() => { setSelectedCourse(course);fetchCourseStudents(course._id);}}
+
                             className="bg-indigo-600 text-white px-3 py-1 rounded font-bold text-xs hover:bg-indigo-700 transition"
                           >
                             {course.courseCode}
@@ -460,17 +467,19 @@ const uploadGradesExcel = async (courseId, file) => {
             <p className="text-xs font-bold text-gray-500 mb-1">Instructors</p>
             <div className="flex flex-wrap gap-2">
               {selectedCourse.instructors?.map((i, idx) => (
-                <span
-                  key={idx}
-                  className={`px-2 py-1 text-xs rounded-full border ${
-                    i.isCoordinator
-                      ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'bg-gray-100 text-gray-700 border-gray-300'
-                  }`}
-                >
-                  {i.email} {i.isCoordinator && "(Coordinator)"}
-                </span>
-              ))}
+              <span
+                key={idx}
+                className={`px-2 py-1 text-xs rounded-full border ${
+                  i.isCoordinator
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-gray-100 text-gray-700 border-gray-300'
+                }`}
+              >
+                {i.instructorId?.firstName} {i.instructorId?.lastName}
+                {i.isCoordinator && " (Coordinator)"}
+              </span>
+            ))}
+
             </div>
           </div>
 

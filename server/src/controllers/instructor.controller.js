@@ -129,19 +129,18 @@ export const addCourse = async (req, res) => {
 // 3. Get My Courses Controller (FIXED VERSION)
 export const getMyCourses = async (req, res) => {
   try {
-    // DO NOT use CourseInstructor. courses can have duplicate codes across different sessions.
-    // Fetch directly from the Course collection using your unique ID.
     const courses = await Course.find({
       "instructors.instructorId": req.userId
-    });
-
+    })
+    .populate("instructors.instructorId", "firstName lastName email");
 
     res.status(200).json(courses);
   } catch (err) {
-    console.error("Error fetching instructor courses:", err);
-    res.status(500).json({ message: "Error fetching your courses" });
+    res.status(500).json({ message: "Failed to fetch courses" });
   }
 };
+
+
 
 // ADD: Get students waiting for instructor approval
 export const getPendingEnrollments = async (req, res) => {
@@ -180,18 +179,26 @@ export const handleStudentRequest = async (req, res) => {
 export const getCourseEnrollments = async (req, res) => {
   try {
     const { courseId } = req.params;
-    
-    // Find enrollments for this specific course that are waiting for THIS instructor
-    const enrollments = await Enrollment.find({ 
-      courseId: courseId,
-      status: { $in: ['pending_instructor', 'pending_fa', 'approved'] } 
-    }).populate('studentId', 'email'); // Get student details
+    const course = await Course.findById(courseId)
+      .populate("instructors.instructorId", "firstName lastName email");
 
-    res.status(200).json(enrollments);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+    const enrollments = await Enrollment.find({
+      courseId,
+      status: { $in: ['pending_instructor', 'pending_fa', 'approved'] }
+    }).populate("studentId", "email");
+    res.status(200).json({
+      course,
+      students: enrollments
+    });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching students" });
+    console.error(err);
+    res.status(500).json({ message: "Error fetching course enrollments" });
   }
 };
+
 
 // get all instructors for auto filling when adding course
 export const getAllInstructors = async (req, res) => {
