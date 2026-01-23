@@ -107,15 +107,18 @@ export const getMyCourses = async (req, res) => {
 
 // 2. Get All Pending Course Proposals (Instructor -> FA)
 
+// backend/controllers/fa.controller.js
+
 export const getProposedCourses = async (req, res) => {
   try {
-    // FIX: Changed from 'instructorId' to 'instructors.instructorId'
+    // FIX: Populate the correct nested path in the instructors array
     const proposals = await Course.find({ status: 'proposed' })
       .populate('instructors.instructorId', 'firstName lastName email'); 
 
     res.status(200).json(proposals);
   } catch (err) {
     console.error("FA Proposal Error:", err);
+    // This sends the 500 error seen in your console
     res.status(500).json({ message: "Failed to fetch details", error: err.message });
   }
 };
