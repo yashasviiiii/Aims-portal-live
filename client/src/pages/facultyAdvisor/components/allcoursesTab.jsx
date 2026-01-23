@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const AllCoursesTab = ({ 
   enrollingCourses, 
-  fetchStudents, 
+  fetchStudentsForCourse, 
   pendingStudents, 
   handleApproval 
 }) => {
+    const [activeCourseId, setActiveCourseId] = useState(null);
+
+    const handleToggle = (courseId) => {
+    if (activeCourseId === courseId) {
+      setActiveCourseId(null);
+    } else {
+      setActiveCourseId(courseId);
+      fetchStudentsForCourse(courseId); // Triggers the fetch in the parent
+    }
+  };
   return (
     <div className="animate-fadeIn">
       <h2 className="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">Student Enrollment Requests</h2>
@@ -22,33 +32,41 @@ const AllCoursesTab = ({
                   <span className="font-bold">{course.courseName}</span>
                 </div>
                 <button 
-                  onClick={() => fetchStudents(course._id)}
-                  className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700"
+                  onClick={() => handleToggle(course._id)}
+                  className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 font-bold"
                 >
-                  View Pending Students
+                  {activeCourseId === course._id ? "Hide Students" : "View Pending Students"}
                 </button>
               </div>
 
               {/* Student List Drill-down */}
-              {pendingStudents[course._id] && (
-                <div className="p-4 bg-white animate-slideDown">
-                  {pendingStudents[course._id].length === 0 ? (
-                    <p className="text-xs text-center text-gray-400">No pending approvals for this course.</p>
+              {activeCourseId === course._id && (
+                <div className="p-4 bg-white animate-fadeIn">
+                  {!pendingStudents[course._id] ? (
+                    <p className="text-xs text-center text-gray-400 italic">Loading student list...</p>
+                  ) : pendingStudents[course._id].length === 0 ? (
+                    <p className="text-xs text-center text-gray-400 italic">No students currently pending for this course.</p>
                   ) : (
                     <div className="space-y-2">
-                      {pendingStudents[course._id].map(student => (
-                        <div key={student._id} className="flex justify-between items-center p-2 border-b text-sm">
-                          <span>{student.name} ({student.rollNumber})</span>
-                          <div className="flex gap-2">
+                      {pendingStudents[course._id].map(enrollment => (
+                        <div key={enrollment._id} className="flex justify-between items-center p-3 border rounded-lg text-sm hover:bg-gray-50">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-800">
+                                {enrollment.studentId?.firstName} {enrollment.studentId?.lastName}
+                            </span>
+                            <span className="text-xs text-gray-500">{enrollment.studentId?.email}</span>
+                          </div>
+                          
+                          <div className="flex gap-4">
                             <button 
-                              onClick={() => handleApproval(course._id, student._id, 'approve')}
-                              className="text-emerald-600 font-bold hover:underline"
+                              onClick={() => handleApproval('approve', enrollment._id, course._id)}
+                              className="text-emerald-600 font-black hover:underline uppercase text-[10px]"
                             >
                               Approve
                             </button>
                             <button 
-                              onClick={() => handleApproval(course._id, student._id, 'reject')}
-                              className="text-rose-600 font-bold hover:underline"
+                              onClick={() => handleApproval('reject', enrollment._id, course._id)}
+                              className="text-rose-600 font-black hover:underline uppercase text-[10px]"
                             >
                               Reject
                             </button>

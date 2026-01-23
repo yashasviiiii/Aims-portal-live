@@ -120,7 +120,11 @@ const AdvisorDashboard = () => {
     setLoadingEnrolling(true);
     try {
       const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${courseId}`, config);
-      setPendingStudents(res.data);
+      // Store as: { "course_id_123": [student1, student2] }
+    setPendingStudents(prev => ({
+      ...prev,
+      [courseId]: res.data
+    }));
     } catch (err) {
       console.error("Error fetching students");
     } finally {
@@ -128,25 +132,44 @@ const AdvisorDashboard = () => {
     }
   };
 
-  const handleFinalFAAction = async (action) => {
-    if (selectedEnrollments.length === 0) return alert("Please select at least one student.");
-    const confirmMsg = action === 'approve' 
-      ? "Are you sure you want to finalize enrollment for selected students?" 
-      : "Reject selected students?";
-    if (!window.confirm(confirmMsg)) return;
+// Updated handleFinalFAAction in AdvisorDashboard.jsx
+const handleFinalFAAction = async (action, singleId = null, courseId = null) => {
+  // Determine which IDs to process: either the specific one clicked or the bulk selection
+  const idsToProcess = singleId ? [singleId] : selectedEnrollments;
 
-    try {
-      const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
-        enrollmentIds: selectedEnrollments,
-        action: action
-      }, config);
-      alert(response.data.message);
-      setSelectedEnrollments([]);
-      fetchStudentsForCourse(selectedCourse._id); 
-    } catch (err) {
-      alert("Failed to process approval.");
+  if (idsToProcess.length === 0) {
+    return alert("Please select at least one student.");
+  }
+
+  const confirmMsg = action === 'approve' 
+    ? `Are you sure you want to finalize enrollment for ${idsToProcess.length} student(s)?` 
+    : `Reject ${idsToProcess.length} selected student(s)?`;
+  
+  if (!window.confirm(confirmMsg)) return;
+
+  try {
+    const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
+      enrollmentIds: idsToProcess,
+      action: action
+    }, config);
+
+    alert(response.data.message);
+
+    // 1. Clear bulk selection if a bulk action was performed
+    if (!singleId) setSelectedEnrollments([]);
+
+    // 2. REFRESH LOGIC
+    // Use the courseId passed from the tab, or fallback to the selectedCourse state
+    const targetCourseId = courseId || (selectedCourse ? selectedCourse._id : null);
+    
+    if (targetCourseId) {
+      fetchStudentsForCourse(targetCourseId);
     }
-  };
+  } catch (err) {
+    console.error("FA Approval Error:", err);
+    alert("Failed to process approval.");
+  }
+};
 
   const fetchProposedProposals = async () => {
     setLoadingProposals(true);
@@ -220,7 +243,7 @@ const AdvisorDashboard = () => {
         {activeTab === "All Courses" && (
           <AllCoursesTab 
             enrollingCourses={enrollingCourses}
-            fetchStudents={fetchStudentsForCourse}
+            fetchStudentsForCourse={fetchStudentsForCourse}
             pendingStudents={pendingStudents}
             handleApproval={handleFinalFAAction}
           />

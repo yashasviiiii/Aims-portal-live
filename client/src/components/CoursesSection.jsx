@@ -87,8 +87,26 @@ const CourseSection = ({ rollNumber }) => {
       await axios.post('http://localhost:5000/api/student/credit', { courseIds: selected }, config);
       alert("Credit requests sent successfully!");
       setSelected([]);
-      fetchCourses();
-    } catch (err) { alert(err.response?.data?.message || "Error"); }
+      fetchCourses(); 
+    } catch (err) { 
+      alert(err.response?.data?.message || "Error crediting courses"); 
+    }
+  };
+
+  // Helper to determine if the course should be disabled
+  const isActionDisabled = (status) => {
+    return status !== "not_applied";
+  };
+
+  // Helper to format the status label
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'pending_instructor': return 'Waiting for Instructor';
+      case 'pending_fa': return 'Waiting for Advisor';
+      case 'approved': return 'Credited';
+      case 'rejected': return 'Rejected';
+      default: return 'Available';
+    }
   };
 
   if (loading) return <div className="p-10 text-center">Loading courses...</div>;
@@ -175,13 +193,14 @@ const CourseSection = ({ rollNumber }) => {
                   </div>
                 </td>
                 <td className="p-4 text-center">
-                  <span className={`px-2 py-1 rounded text-[10px] font-black border uppercase tracking-tighter ${
-                    course.isCredited 
-                    ? 'bg-green-100 text-green-700 border-green-200' 
-                    : 'bg-blue-100 text-blue-700 border-blue-200'
-                  }`}>
-                    {course.isCredited ? 'CREDITED' : 'ENROLLING'}
-                  </span>
+                  <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
+                      course.enrollmentStatus === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
+                      course.enrollmentStatus === 'pending_instructor' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                      course.enrollmentStatus === 'pending_fa' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                      'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}>
+                      {getStatusLabel(course.enrollmentStatus)}
+                    </span>
                 </td>
               </tr>
             ))}
