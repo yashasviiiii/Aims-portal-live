@@ -1,6 +1,7 @@
 import Course from "../models/Course.js";
 import Enrollment from '../models/Enrollment.js';
 import Name from "../models/name.js";
+import ExcelJS from "exceljs";
 
 export const instructorDashboard = async (req, res) => {
   try {
@@ -194,5 +195,132 @@ export const handleInstructorAction = async (req, res) => {
     res.json({ message: `Students ${action}ed successfully` });
   } catch (err) {
     res.status(500).json({ message: "Action failed" });
+  }
+};
+
+// download grades 
+export const downloadGradesTemplate = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const enrollments = await Enrollment.find({
+      courseId,
+      status: "approved"
+    }).populate("studentId", "firstName lastName email");
+
+    if (!enrollments.length) {
+      return res.status(400).json({ message: "No enrolled students" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Grades");
+
+    sheet.columns = [
+      { header: "Enrollment ID", key: "enrollmentId", width: 30 },
+      { header: "Student Name", key: "name", width: 25 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Grade", key: "grade", width: 10 }
+    ];
+
+    enrollments.forEach(e => {
+      sheet.addRow({
+        enrollmentId: e._id.toString(),
+        name: `${e.studentId.firstName} ${e.studentId.lastName}`,
+        email: e.studentId.email,
+        grade: e.grade || ""
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=grades.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    res.status(500).json({ message: "Excel download failed", error: err.message });
+  }
+};
+
+// upload excel and save grades
+export const uploadGradesExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const sheet = workbook.getWorksheet(1);
+    const errors = [];
+
+    for (let i = 2; i <= sheet.rowCount; i++) {
+      const row = sheet.getRow(i);
+
+      // SAFELY extract values
+      const enrollmentId =
+        row.getCell(1).value?.text ||
+        row.getCell(1).value?.toString();
+
+      const grade =
+        row.getCell(4).value?.text ||
+        row.getCell(4).value?.toString();
+
+      if (!enrollmentId || !grade) {
+        errors.push(`Row ${i}: Missing enrollmentId or grade`);
+        continue;
+      }
+
+      const enrollment = await Enrollment
+        .findById(enrollmentId)
+        .populate("courseId");
+
+      if (!enrollment) {
+        errors.push(`Row ${i}: Enrollment not found`);
+        continue;
+      }
+
+      // ✅ Check status
+      if (enrollment.status !== "approved") {
+        errors.push(`Row ${i}: Student not approved`);
+        continue;
+      }
+
+      // ✅ Check instructor belongs to course
+      const isInstructor = enrollment.courseId.instructors.some(
+        inst => inst.instructorId.toString() === req.userId
+      );
+
+      if (!isInstructor) {
+        errors.push(`Row ${i}: Unauthorized instructor`);
+        continue;
+      }
+
+      enrollment.grade = grade.trim();
+      await enrollment.save();
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({
+        message: "Partial failure",
+        errors
+      });
+    }
+
+    res.json({ message: "Grades uploaded successfully" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Grade upload failed",
+      error: err.message
+    });
   }
 };

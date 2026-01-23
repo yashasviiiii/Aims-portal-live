@@ -40,6 +40,8 @@ const InstructorDashboard = () => {
   const [selectedEnrollments, setSelectedEnrollments] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [session, setSession] = useState("");
+  const [uploadingGrades, setUploadingGrades] = useState(false);
+
 
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -118,6 +120,57 @@ const InstructorDashboard = () => {
     .catch(() => {});
 }, []);
 
+const downloadGradesTemplate = async (courseId) => {
+  try {
+    const res = await axios.get(
+      `http://localhost:5000/api/instructor/download-grades/${courseId}`,
+      {
+        ...config,
+        responseType: "blob"
+      }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `course_${courseId}_grades.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (err) {
+    alert("Failed to download Excel");
+  }
+};
+
+const uploadGradesExcel = async (courseId, file) => {
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    setUploadingGrades(true);
+    await axios.post(
+      `http://localhost:5000/api/instructor/upload-grades/${courseId}`,
+      formData,
+      {
+        ...config,
+        headers: {
+          ...config.headers,
+          "Content-Type": "multipart/form-data"
+        }
+      }
+    );
+
+    alert("Grades uploaded successfully");
+  } catch (err) {
+    alert(
+      err.response?.data?.message || "Grade upload failed due to mismatch"
+    );
+  } finally {
+    setUploadingGrades(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -362,6 +415,27 @@ const InstructorDashboard = () => {
                 </button>
 
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
+                <div className="flex gap-3 mb-6">
+                  <button
+                    onClick={() => downloadGradesTemplate(selectedCourse._id)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-blue-700"
+                  >
+                    Download Enrolled Students (Excel)
+                  </button>
+
+                  <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
+                    {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      hidden
+                      onChange={(e) =>
+                        uploadGradesExcel(selectedCourse._id, e.target.files[0])
+                      }
+                    />
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-10">
                   {Object.entries({
                     Code: selectedCourse.courseCode,

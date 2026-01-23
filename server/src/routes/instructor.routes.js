@@ -8,10 +8,14 @@ import {
   handleStudentRequest,
   getCourseEnrollments,
   handleInstructorAction,
-  getAllInstructors
+  getAllInstructors,
+  downloadGradesTemplate,
+  uploadGradesExcel
 } from "../controllers/instructor.controller.js";
+import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // --- DASHBOARD & COURSE MANAGEMENT ---
 
@@ -39,4 +43,8 @@ router.get("/pending-enrollments", verifyJWT, requireInstructor, getPendingEnrol
 router.post("/handle-student-request", verifyJWT, requireInstructor, handleStudentRequest);
 router.get("/course-students/:courseId", verifyJWT, requireInstructor, getCourseEnrollments);
 router.post("/enrollment-action", verifyJWT,requireInstructor, handleInstructorAction);
+
+router.get("/download-grades/:courseId", verifyJWT, downloadGradesTemplate);
+router.post("/upload-grades/:courseId", verifyJWT, upload.single("file"), uploadGradesExcel);
+
 export default router;
