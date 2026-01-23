@@ -214,9 +214,14 @@ const uploadGradesExcel = async (courseId, file) => {
                   alert("Course submitted for Faculty Advisor approval");
                   setActiveTab("My Courses");
                 } catch (err) {
-                  alert("Submission failed");
-                }
-              }}
+                  if (err.response && err.response.status === 409) {
+      // 🔹 HARD ERROR: User must change the slot
+      alert(`⚠️ CANNOT SUBMIT: ${err.response.data.message}`);
+    } else {
+      alert("Submission failed: " + (err.response?.data?.message || "Server Error"));
+    }
+  }
+}}
               className="grid grid-cols-2 gap-4"
             >
               {/* Course Code */}

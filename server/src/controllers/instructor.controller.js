@@ -36,7 +36,7 @@ export const addCourse = async (req, res) => {
       session,
       slot,
       instructors,
-      allowedEntryYears
+      allowedEntryYears,
     } = req.body;
 
     const creator = await Name.findById(req.userId);
@@ -45,38 +45,63 @@ export const addCourse = async (req, res) => {
     }
 
     const finalInstructors = [];
+    const instructorIdsToCheck = [creator._id];
 
-    // 🔹 Auto-add creator as coordinator
+    // 1. Add creator as the first instructor (coordinator)
     finalInstructors.push({
       instructorId: creator._id,
       name: `${creator.firstName} ${creator.lastName}`,
       isCoordinator: true
     });
 
-    // 🔹 Resolve other instructors by NAME
-    for (const inst of instructors) {
-      const found = await Name.findOne({
-        $expr: {
-          $eq: [
-            { $concat: ["$firstName", " ", "$lastName"] },
-            inst.name
-          ]
-        }
-      });
+    // 2. Resolve other instructors by name
+    if (instructors && instructors.length > 0) {
+      for (const inst of instructors) {
+        // Skip empty instructor rows if any
+        if (!inst.name) continue;
 
-      if (!found) {
-        return res.status(400).json({
-          message: `Instructor not found: ${inst.name}`
+        const found = await Name.findOne({
+          $expr: {
+            $eq: [
+              { $concat: ["$firstName", " ", "$lastName"] },
+              inst.name
+            ]
+          }
+        });
+
+        if (!found) {
+          return res.status(400).json({
+            message: `Instructor not found: ${inst.name}`
+          });
+        }
+
+        // Add to tracking arrays
+        instructorIdsToCheck.push(found._id);
+        finalInstructors.push({
+          instructorId: found._id,
+          name: inst.name,
+          isCoordinator: inst.isCoordinator
         });
       }
+    }
 
-      finalInstructors.push({
-        instructorId: found._id,
-        name: inst.name,
-        isCoordinator: inst.isCoordinator
+    // 3. 🔹 STRICT SLOT CONFLICT CHECK
+    // We use .findOne because we just need to know if at least ONE exists
+    const conflictFound = await Course.findOne({
+      session: session,
+      slot: slot,
+      "instructors.instructorId": { $in: instructorIdsToCheck },
+      status: { $ne: "rejected" } 
+    });
+
+    if (conflictFound) {
+      return res.status(409).json({
+        conflict: true,
+        message: `Conflict: An instructor in this list already has a course in slot ${slot} for session ${session}. Please choose a different slot.`
       });
     }
 
+    // 4. Create the new course
     const newCourse = await Course.create({
       courseCode,
       courseName,
@@ -89,14 +114,14 @@ export const addCourse = async (req, res) => {
       status: "proposed"
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Course proposed successfully",
       course: newCourse
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Add Course Error:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 

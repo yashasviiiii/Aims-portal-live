@@ -36,4 +36,5 @@ const courseSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+courseSchema.index({ session: 1, slot: 1, "instructors.instructorId": 1 });
 export default mongoose.model('Course', courseSchema);
