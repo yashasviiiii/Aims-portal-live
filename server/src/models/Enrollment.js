@@ -19,7 +19,7 @@ const enrollmentSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ["pending_instructor", "pending_fa", "approved", "rejected"], 
+    enum: ["pending_instructor", "pending_fa", "approved", "rejected", "dropped", "withdrawn"], 
     default: "pending_instructor" 
   },
   instructorId: { type: mongoose.Schema.Types.ObjectId, ref: "Name" }

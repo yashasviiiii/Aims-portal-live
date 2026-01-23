@@ -57,50 +57,76 @@ export const getAllCourses = async (req, res) => {
 // SEND ENROLLMENT REQUESTS
 export const creditCourses = async (req, res) => {
   try {
-    const { courseIds } = req.body; 
-    
-    const existing = await Enrollment.find({ 
-        studentId: req.userId, 
-        courseId: { $in: courseIds } 
-    });
+    const { courseIds } = req.body;
 
-    const alreadyEnrolledIds = existing.map(e => e.courseId.toString());
-    const newCourseIds = courseIds.filter(id => !alreadyEnrolledIds.includes(id));
-
-    if (newCourseIds.length === 0) {
-        return res.status(400).json({ message: "Already applied for these courses" });
+    if (!courseIds?.length) {
+      return res.status(400).json({ message: "No courses selected" });
     }
 
-    const enrollmentRequests = await Promise.all(newCourseIds.map(async (id) => {
-      const course = await Course.findById(id);
-      
-      // FIX 1: Prevent crash if course is null
-      if (!course) {
-        throw new Error(`Course with ID ${id} not found`);
-      }
+    // prevent duplicate enrollments except dropped
+    const existing = await Enrollment.find({
+      studentId: req.userId,
+      courseId: { $in: courseIds },
+      status: { $ne: "dropped" }
+    });
 
-      return {
-        studentId: req.userId,
-        courseId: id,
-        instructorId: course.instructorId, // This only runs if course exists
-        session: course.session,
-        status: 'pending_instructor'      
-      };
-    }));
+    const alreadyIds = new Set(
+      existing.map(e => e.courseId.toString())
+    );
+
+    const newCourseIds = courseIds.filter(
+      id => !alreadyIds.has(id)
+    );
+
+    if (!newCourseIds.length) {
+      return res.status(400).json({
+        message: "Already applied / enrolled"
+      });
+    }
+
+    const enrollmentRequests = await Promise.all(
+      newCourseIds.map(async (id) => {
+        const course = await Course.findById(id);
+
+        if (!course) throw new Error(`Course not found`);
+
+        // ✅ MULTIPLE COORDINATOR SUPPORT
+        const coordinators = course.instructors.filter(i => i.isCoordinator);
+
+        const assignedInstructor =
+          coordinators.length > 0
+            ? coordinators[0]            // pick first coordinator
+            : course.instructors[0];     // fallback
+
+        if (!assignedInstructor) {
+          throw new Error(`No instructor assigned for ${course.courseCode}`);
+        }
+
+        return {
+          studentId: req.userId,
+          courseId: id,
+          instructorId: assignedInstructor.instructorId,
+          session: course.session,
+          status: "pending_instructor"
+        };
+      })
+    );
 
     await Enrollment.insertMany(enrollmentRequests);
-    
-    // FIX 2: Use status 201 for created resources
-    res.status(201).json({ message: "Requests sent to instructor successfully" });
-    
+
+    res.status(201).json({
+      message: "Requests sent to instructor successfully"
+    });
+
   } catch (err) {
-  console.error("DETAILED ERROR:", err); // Look at your terminal!
-  res.status(500).json({ 
-    message: "Enrollment failed", 
-    error: err.message // This will send the real error to your frontend alert
-  });
-}
+    console.error("Enrollment Error:", err);
+    res.status(500).json({
+      message: "Enrollment failed",
+      error: err.message
+    });
+  }
 };
+
 
 export const getMyRecords = async (req, res) => {
   try {
