@@ -27,7 +27,7 @@ const InstructorDashboard = () => {
   // --- NEW: Course meta states ---
   const [allInstructors, setAllInstructors] = useState([]);
   const [instructors, setInstructors] = useState([
-    { name: "", instructorId: null, isCoordinator: true } // auto coordinator
+    { name: "Loading...", instructorId: null, isCoordinator: true} // auto coordinator
   ]);
 
 
@@ -47,18 +47,35 @@ const InstructorDashboard = () => {
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
   // --- Effects ---
+useEffect(() => {
+  const fetchProfile = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
+      
+      // This will now contain instructor.firstName and instructor.lastName 
+      // because of the .populate() we added to the backend above
+      setInstructorData(response.data.instructor);
+    } catch (error) {
+      console.error("Profile Fetch Error:", error);
+      setInstructorData({ name: "Instructor" });
+    }
+  };
+  fetchProfile();
+}, []);
+
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
-        setInstructorData(response.data.instructor);
-      } catch (error) {
-        const backupEmail = localStorage.getItem("userEmail");
-        setInstructorData({ name: backupEmail ? backupEmail.split('@')[0] : "Instructor" });
+  // Use the individual names to build the full name for the form row
+  if (instructorData && instructorData.firstName) {
+    setInstructors([
+      { 
+        name: `${instructorData.firstName} ${instructorData.lastName}`, 
+        instructorId: instructorData._id, 
+        isCoordinator: true 
       }
-    };
-    fetchProfile();
-  }, []);
+    ]);
+  }
+}, [instructorData]);
 
   useEffect(() => {
     if (activeTab === "My Courses") {
@@ -249,7 +266,7 @@ const uploadGradesExcel = async (courseId, file) => {
               {/* Credits */}
               <div>
                 <label className="text-sm font-semibold">Credits</label>
-                <input name="credits" type="number" className="w-full p-2 border rounded" required />
+                <input name="credits" type="number" min="0" step="0.5" className="w-full p-2 border rounded" required />
               </div>
 
               {/* Allowed Entry Years */}
@@ -290,75 +307,110 @@ const uploadGradesExcel = async (courseId, file) => {
               </div>
 
               {/* Instructors & Coordinators */}
-              <div className="col-span-2">
-                <label className="text-sm font-semibold">Instructors & Coordinators</label>
+<div className="col-span-2">
+  <label className="text-sm font-semibold text-gray-700 mb-2 block">
+    Instructors & Coordinators
+  </label>
 
-                {instructors.map((inst, idx) => (
-                  <div key={idx} className="flex gap-2 mb-2 items-center">
-                    {/* Instructor Email */}
-                  <input
-                    list={`instructors-${idx}`}
-                    className="flex-1 p-2 border rounded"
-                    placeholder="Select Instructor"
-                    value={inst.name}   // MUST be controlled
-                    onChange={(e) => {
-                      const selected = allInstructors.find(
-                        i => `${i.firstName} ${i.lastName}` === e.target.value
-                      );
+  {instructors.map((inst, idx) => (
+  <div key={idx} className="flex gap-2 mb-3 items-center animate-fadeIn">
+    {/* Instructor Selection */}
+    <input
+      list={idx > 0 ? `instructors-${idx}` : ""} // Disable suggestions for the first row
+      className={`flex-1 p-2 border rounded outline-none transition-all ${
+        idx === 0 
+          ? "bg-gray-100 text-gray-600 cursor-not-allowed font-medium" // Locked style for row 1
+          : "bg-white focus:ring-2 focus:ring-indigo-200"
+      }`}
+      placeholder={idx === 0 ? "Loading profile..." : "Select Instructor"}
+      value={inst.name}
+      readOnly={idx === 0} // 🔹 Prevent editing the logged-in instructor's name
+      onChange={(e) => {
+        if (idx === 0) return; // Guard clause
+        const selected = allInstructors.find(
+          i => `${i.firstName} ${i.lastName}` === e.target.value
+        );
 
-                      const copy = [...instructors];
-                      copy[idx] = {
-                        name: selected ? `${selected.firstName} ${selected.lastName}` : "",
-                        instructorId: selected?._id || null,
-                        isCoordinator: copy[idx].isCoordinator
-                      };
+        const copy = [...instructors];
+        copy[idx] = {
+          name: selected ? `${selected.firstName} ${selected.lastName}` : e.target.value,
+          instructorId: selected?._id || null,
+          isCoordinator: copy[idx].isCoordinator
+        };
+        setInstructors(copy);
+      }}
+      required
+    />
 
-                      setInstructors(copy);
-                    }}
-                    required
-                  />
+    {/* Coordinator Checkbox */}
+    <label className="flex items-center gap-1 text-xs cursor-pointer hover:text-indigo-600 transition">
+      <input
+        type="checkbox"
+        className="rounded text-indigo-600 w-4 h-4"
+        checked={inst.isCoordinator}
+        onChange={() => {
+          const copy = [...instructors];
+          const turningOn = !copy[idx].isCoordinator;
 
-                    {/* Instructor Coordinator Checkbox */}
-                    <label className="flex items-center gap-1 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={inst.isCoordinator}
-                        onChange={() => {
-                          const copy = [...instructors];
-                          copy[idx].isCoordinator = !copy[idx].isCoordinator;
-                          setInstructors(copy);
-                        }}
-                      />
-                      Coordinator
-                    </label>
+          // Single coordinator logic: if turning one ON, turn all others OFF
+          if (turningOn) {
+            copy.forEach((item) => (item.isCoordinator = false));
+          }
+          
+          copy[idx].isCoordinator = turningOn;
+          setInstructors(copy);
+        }}
+      />
+      Coord.
+    </label>
 
-                    {/* Datalist for Suggestions */}
-                    <datalist id={`instructors-${idx}`}>
-                      {allInstructors.map((i) => (
-                      <option
-                        key={i._id}
-                        value={`${i.firstName} ${i.lastName}`}
-                      />
-                      ))}
-                    </datalist>
-                  </div>
-                ))}
+    {/* Remove Button Logic */}
+    {idx > 0 ? (
+      <button
+        type="button"
+        title="Remove Instructor"
+        onClick={() => {
+          const copy = instructors.filter((_, i) => i !== idx);
+          setInstructors(copy);
+        }}
+        className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    ) : (
+      <div className="w-8"></div> // Space maintainer for Row 1
+    )}
 
-                {/* Add New Instructor Button */}
-                <button
-                  type="button"
-                  className="text-xs text-indigo-600 font-bold"
-                  onClick={() =>
-                    setInstructors([
-                      ...instructors,
-                      { name: "", instructorId: null, isCoordinator: false }
-                    ])
-                  }
-                >
-                  + Add Instructor
-                </button>
-              </div>
+    {/* Suggestions List (Only for Guest rows) */}
+    {idx > 0 && (
+      <datalist id={`instructors-${idx}`}>
+        {allInstructors.map((i) => (
+          <option key={i._id} value={`${i.firstName} ${i.lastName}`} />
+        ))}
+      </datalist>
+    )}
+  </div>
+))}
 
+  {/* Add New Instructor Button */}
+  <button
+    type="button"
+    className="mt-1 flex items-center gap-1 text-xs text-indigo-600 font-bold hover:text-indigo-800 transition"
+    onClick={() =>
+      setInstructors([
+        ...instructors,
+        { name: "", instructorId: null, isCoordinator: false }
+      ])
+    }
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+    </svg>
+    Add Instructor
+  </button>
+</div>
               {/* Submit Button */}
               <button
                 type="submit"
