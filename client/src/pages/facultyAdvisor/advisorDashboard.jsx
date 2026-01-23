@@ -4,8 +4,23 @@ import axios from 'axios';
 
 const AdvisorDashboard = () => {
   // --- States ---
+  const DEPARTMENTS = [
+    "Computer Science and Engineering",
+    "Electrical Engineering",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Artificial Intelligence",
+    "Chemical Engineering",
+    "Humanities and Social Science"
+  ];
+  const ACADEMIC_SESSIONS = [
+    "2025-II",
+    "2025-S",
+    "2026-I"
+  ];
+
   const [userData, setUserData] = useState({ name: "Advisor" });
-  
+
   // PERSISTENCE LOGIC: Initialize from localStorage or default to "Home"
   const [activeTab, setActiveTab] = useState(localStorage.getItem("activeAdvisorTab") || "Home");
   
@@ -24,6 +39,16 @@ const AdvisorDashboard = () => {
   const [selectedEnrollments, setSelectedEnrollments] = useState([]);
   const [loadingEnrolling, setLoadingEnrolling] = useState(false);
   
+  // --- NEW: Course meta states ---
+  const [allInstructors, setAllInstructors] = useState([]);
+  const [instructors, setInstructors] = useState([
+    { name: "", instructorId: null, isCoordinator: true } // auto coordinator
+  ]);
+  const [entryYears, setEntryYears] = useState("");
+
+  // New States for Course Detail View
+  const [session, setSession] = useState("");
+
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -43,7 +68,6 @@ const AdvisorDashboard = () => {
 
   // --- Effect 2: Tab Switching & Persistence Logic ---
   useEffect(() => {
-    // Save current tab to localStorage whenever it changes
     localStorage.setItem("activeAdvisorTab", activeTab);
 
     if (activeTab === "My Courses") fetchMyCourses();
@@ -55,6 +79,13 @@ const AdvisorDashboard = () => {
     setSelectedIds([]);
   }, [activeTab]);
 
+  // Fetch all instructors 
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/instructor/all", config)
+      .then(res => setAllInstructors(res.data))
+      .catch(() => {});
+  }, []);
+  
   const fetchMyCourses = async () => {
     setLoadingMyCourses(true);
     try {
@@ -175,42 +206,134 @@ const AdvisorDashboard = () => {
         {/* --- ADD COURSE TAB --- */}
         {activeTab === "Add Course" && (
           <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-sm border animate-fadeIn">
-            <h2 className="text-2xl font-bold mb-6 text-indigo-900 border-b pb-2">New Course Offering</h2>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const data = Object.fromEntries(new FormData(e.target));
-              try {
-                await axios.post('http://localhost:5000/api/instructor/add-course', data, config);
-                alert("Course submitted for approval!");
-                // This will trigger the useEffect to save "My Courses" to localStorage
-                setActiveTab("My Courses"); 
-              } catch (err) { alert("Submission failed"); }
-            }} className="grid grid-cols-2 gap-4">
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Course Code</label>
-                <input name="courseCode" placeholder="CS301" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+            <h2 className="text-2xl font-bold mb-6 text-indigo-900 border-b pb-2">Course Offering Form</h2>
+            
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = Object.fromEntries(new FormData(e.target));
+                const payload = {
+                  ...formData,
+                  instructors, 
+                  allowedEntryYears: entryYears.split(",").map(Number),
+                };
+
+                try {
+                  await axios.post('http://localhost:5000/api/instructor/add-course', payload, config);
+                  alert("Course submitted for Faculty Advisor approval");
+                  setActiveTab("My Courses");
+                } catch (err) {
+                  alert("Submission failed");
+                }
+              }}
+              className="grid grid-cols-2 gap-4"
+            >
+              <div>
+                <label className="text-sm font-semibold">Course Code</label>
+                <input name="courseCode" className="w-full p-2 border rounded" required />
               </div>
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Course Name</label>
-                <input name="courseName" placeholder="Operating Systems" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+              <div>
+                <label className="text-sm font-semibold">Course Name</label>
+                <input name="courseName" className="w-full p-2 border rounded" required />
               </div>
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Offering Dept</label>
-                <input name="offeringDept" placeholder="CSE" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+              <div>
+                <label className="text-sm font-semibold">Offering Department</label>
+                <select name="offeringDept" className="w-full p-2 border rounded" required>
+                  {DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Credits</label>
-                <input name="credits" type="number" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+              <div>
+                <label className="text-sm font-semibold">Credits</label>
+                <input name="credits" type="number" className="w-full p-2 border rounded" required />
               </div>
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Session</label>
-                <input name="session" placeholder="2024-I" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+              <div className="col-span-2">
+                <label className="text-sm font-semibold">Allowed Entry Years (comma separated)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2019,2020,2021"
+                  className="w-full p-2 border rounded"
+                  value={entryYears}
+                  onChange={(e) => setEntryYears(e.target.value)}
+                  required
+                />
               </div>
-              <div className="col-span-1">
-                <label className="text-xs font-bold uppercase text-gray-500">Slot</label>
-                <input name="slot" placeholder="A1" className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" required />
+              <div>
+                <label className="text-sm font-semibold">Academic Session</label>
+                <input
+                  name="session"
+                  list="sessions"
+                  value={session}
+                  onChange={(e) => setSession(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  required
+                />
+                <datalist id="sessions">
+                  {ACADEMIC_SESSIONS.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
               </div>
-              <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-3 rounded-md font-bold hover:bg-indigo-700 transition-colors shadow-lg">Submit Offering</button>
+              <div>
+                <label className="text-sm font-semibold">Slot</label>
+                <input name="slot" className="w-full p-2 border rounded" required />
+              </div>
+
+              <div className="col-span-2">
+                <label className="text-sm font-semibold">Instructors & Coordinators</label>
+                {instructors.map((inst, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2 items-center">
+                    <input
+                      list={`instructors-${idx}`}
+                      className="flex-1 p-2 border rounded"
+                      placeholder="Select Instructor"
+                      value={inst.name}
+                      onChange={(e) => {
+                        const selected = allInstructors.find(
+                          i => `${i.firstName} ${i.lastName}` === e.target.value
+                        );
+                        const copy = [...instructors];
+                        copy[idx] = {
+                          name: selected ? `${selected.firstName} ${selected.lastName}` : e.target.value,
+                          instructorId: selected?._id || null,
+                          isCoordinator: copy[idx].isCoordinator
+                        };
+                        setInstructors(copy);
+                      }}
+                      required
+                    />
+                    <label className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={inst.isCoordinator}
+                        onChange={() => {
+                          const copy = [...instructors];
+                          copy[idx].isCoordinator = !copy[idx].isCoordinator;
+                          setInstructors(copy);
+                        }}
+                      />
+                      Coordinator
+                    </label>
+                    <datalist id={`instructors-${idx}`}>
+                      {allInstructors.map((i) => (
+                        <option key={i._id} value={`${i.firstName} ${i.lastName}`} />
+                      ))}
+                    </datalist>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="text-xs text-indigo-600 font-bold"
+                  onClick={() => setInstructors([...instructors, { name: "", instructorId: null, isCoordinator: false }])}
+                >
+                  + Add Instructor
+                </button>
+              </div>
+
+              <button type="submit" className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold">
+                Submit Proposal
+              </button>
             </form>
           </div>
         )}
@@ -262,10 +385,7 @@ const AdvisorDashboard = () => {
                 <div className="grid grid-cols-12 gap-4 px-5 mb-3 text-xs font-bold uppercase text-gray-400">
                   <div className="col-span-2">Code</div>
                   <div className="col-span-5">Course Name</div>
-                  {/* Inside enrollingCourses.map(course => ...) */}
-<div className="col-span-3 text-sm text-gray-500">
-  {course.instructors?.[0]?.instructorId?.lastName || "Faculty"}
-</div>
+                  <div className="col-span-3">Instructor</div>
                   <div className="col-span-2 text-right">Action</div>
                 </div>
                 {loadingEnrolling ? <p className="text-center py-10">Loading...</p> : (
@@ -274,7 +394,11 @@ const AdvisorDashboard = () => {
                       <div key={course._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border rounded-xl shadow-sm">
                         <div className="col-span-2 font-bold text-indigo-600">{course.courseCode}</div>
                         <div className="col-span-5 font-bold text-gray-800">{course.courseName}</div>
-                        <div className="col-span-3 text-sm text-gray-500">{course.instructor}</div>
+                        <div className="col-span-3 text-sm text-gray-500">
+                           {/* FIXED: Check if instructors array exists and display last name */}
+                           {course.instructors?.[0]?.instructorId?.lastName || "Faculty"}
+                           {course.instructors?.length > 1 && " + others"}
+                        </div>
                         <div className="col-span-2 text-right">
                           <button 
                             onClick={() => { setSelectedCourse(course); fetchStudentsForCourse(course._id); }}
@@ -393,22 +517,22 @@ const AdvisorDashboard = () => {
                     </div>
                     <div className="col-span-2"><span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded font-bold text-sm border border-indigo-100">{course.courseCode}</span></div>
                     <div className="col-span-3 font-bold text-gray-800">{course.courseName}</div>
-                    {/* Inside allProposedCourses.map((course, index) => ...) */}
+                    
+                    <div className="col-span-4 text-center text-xs text-gray-500">
+                      {/* FIXED: Loop through instructors array */}
+                      {course.instructors && course.instructors.length > 0 ? (
+                        course.instructors.map((inst, i) => (
+                          <p key={i} className="font-semibold text-indigo-900">
+                            Prof. {inst.instructorId?.firstName || "Faculty"} {inst.instructorId?.lastName || ""} 
+                            <span className="text-[9px] text-gray-400 ml-1">({inst.instructorId?.email || "No Email"})</span>
+                          </p>
+                        ))
+                      ) : (
+                        <p className="font-semibold text-red-400 italic">No Instructor Assigned</p>
+                      )}
+                      <p>{course.offeringDept} | {course.session} | Slot: {course.slot}</p>
+                    </div>
 
-<div className="col-span-4 text-center text-xs text-gray-500">
-  {/* Map through the instructors array to show names/emails */}
-  {course.instructors && course.instructors.length > 0 ? (
-    course.instructors.map((inst, i) => (
-      <p key={i} className="font-semibold text-indigo-900">
-        Prof. {inst.instructorId?.firstName} {inst.instructorId?.lastName} 
-        <span className="text-[9px] text-gray-400 ml-1">({inst.instructorId?.email})</span>
-      </p>
-    ))
-  ) : (
-    <p className="font-semibold text-red-400">Instructor Data Missing</p>
-  )}
-  <p>{course.offeringDept} | {course.session} | Slot: {course.slot}</p>
-</div>
                     <div className="col-span-2 text-right">
                       <span className="bg-amber-100 text-amber-800 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-inner">Proposed</span>
                     </div>
