@@ -1,6 +1,7 @@
 // src/pages/instructor/components/CourseDetail.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const CourseDetail = ({ course, config, onBack }) => {
   // 1. Unified State Names
@@ -68,21 +69,24 @@ const fetchStudents = async () => {
 
   // Include your handleInstructorAction, downloadGradesTemplate, and uploadGradesExcel here...
   const handleInstructorAction = async (action) => {
-    if (selectedEnrollments.length === 0) return alert("Select students first");
+    if (selectedEnrollments.length === 0) return toast.error("Please select students first");
+
+    const tid = toast.loading(`Processing ${selectedEnrollments.length} requests...`);
     try {
       await axios.post('http://localhost:5000/api/instructor/enrollment-action', {
         enrollmentIds: selectedEnrollments,
         action
       }, config);
-      alert(`Selected students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`);
+      toast.success(`Students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`, { id: tid });
       setSelectedEnrollments([]);
       fetchStudents();
     } catch (err) {
-      alert("Action failed");
+      toast.error("Action failed", { id: tid });
     }
   };
 
   const downloadGradesTemplate = async (courseId) => {
+    let tid;
     try {
       const res = await axios.get(
         `http://localhost:5000/api/instructor/download-grades/${courseId}`,
@@ -99,17 +103,24 @@ const fetchStudents = async () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success("Download started", { id: tid });
     } catch (err) {
-      alert("Failed to download Excel");
+      if (err.response?.status === 400) {
+      toast.error(err.response.data.message || "No students enrolled in the course", { 
+        id: tid,
+        icon: '⚠️' 
+      });
+    } else {
+      toast.error("Server error. Try again later.", { id: tid });
+    }
     }
   };
   
   const uploadGradesExcel = async (courseId, file) => {
     if (!file) return;
-  
+    const tid = toast.loading(`Uploading ${file.name}...`);
     const formData = new FormData();
     formData.append("file", file);
-  
     try {
       setUploadingGrades(true);
       await axios.post(
@@ -123,12 +134,10 @@ const fetchStudents = async () => {
           }
         }
       );
-  
-      alert("Grades uploaded successfully");
+      toast.success("Grades uploaded successfully!", { id: tid });
+      fetchStudents();
     } catch (err) {
-      alert(
-        err.response?.data?.message || "Grade upload failed due to mismatch"
-      );
+      toast.error(err.response?.data?.message || "Upload failed: Data mismatch", { id: tid, duration: 4000 });
     } finally {
       setUploadingGrades(false);
     }
@@ -143,16 +152,29 @@ const fetchStudents = async () => {
   return (
     <div className="animate-fadeIn">
       <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline">← Back to My Courses</button>
-
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100 gap-4">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
                 <div className="flex gap-3 mb-6">
+                  {/* Download Button */}
                   <button
-                    onClick={() => downloadGradesTemplate(course._id)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-blue-700"
-                  >
-                    Download Enrolled Students (Excel)
-                  </button>
-
+  onClick={() => {
+    if (totalEnrolled === 0) {
+      return toast.error("Cannot download: No students enrolled yet", { icon: '🚫' });
+    }
+    downloadGradesTemplate(course._id);
+  }}
+  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+    totalEnrolled === 0 
+      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" 
+      : "bg-white text-blue-600 border border-blue-600 hover:bg-blue-50"
+  }`}
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+  Download Students
+</button>
+                  {/* Upload Button */}
                   <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
                     {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
                     <input
@@ -165,7 +187,8 @@ const fetchStudents = async () => {
                     />
                   </label>
                 </div>
-                 {/* Info Grid */}
+                </div>
+                {/* Info Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-10">
                   {Object.entries({
                     Code: course.courseCode,
@@ -186,6 +209,7 @@ const fetchStudents = async () => {
     <p className="font-bold text-indigo-900 text-xs md:text-sm leading-tight break-words w-full">{totalEnrolled}</p>
   </div>
                 </div>
+                  {/*Instructors */}
                 <div className="col-span-6">
             <p className="text-xs font-bold text-gray-500 mb-1">Instructors</p>
             <div className="flex flex-wrap gap-2">
@@ -205,7 +229,6 @@ const fetchStudents = async () => {
 
             </div>
           </div>
-
                 {/* Enrollment Section */}
 <div className="mt-12 mb-8">
   {/* Row 1: Title and Status Actions */}

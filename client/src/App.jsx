@@ -8,6 +8,7 @@ import InstructorDashboard from "./pages/instructor/instructorDashboard.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdvisorDashboard from "./pages/facultyAdvisor/advisorDashboard.jsx";
 import { useEffect } from "react";
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   useEffect(() => {

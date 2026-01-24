@@ -1,6 +1,7 @@
 // src/pages/instructor/components/CourseForm.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const DEPARTMENTS = ["Computer Science and Engineering", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering", "Artificial Intelligence", "Chemical Engineering", "Humanities and Social Science"];
 const ACADEMIC_SESSIONS = ["2025-II", "2025-S", "2026-I"];
@@ -20,6 +21,7 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
                     <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                const toastId = toast.loading("Submitting course proposal...");
                 const formData = Object.fromEntries(new FormData(e.target));
 
                 const payload = {
@@ -31,7 +33,7 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
                 try {
                   const res = await axios.post('http://localhost:5000/api/instructor/add-course', payload, config);
                   if (res.status === 200 || res.status === 201) {
-                      alert("Course submitted for Faculty Advisor approval");
+                      toast.success("Course submitted for Faculty Advisor approval", { id: toastId });
                    try {
       if (typeof fetchMyCourses === "function") {
         await fetchMyCourses();
@@ -45,12 +47,12 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
                     console.error("Submit Error:", err.response?.data);
                   if (err.response && err.response.status === 409) {
                         // 🔹 HARD ERROR: User must change the slot
-                    alert(`⚠️ CANNOT SUBMIT: ${err.response.data.message}`);
+                    toast.error(`Conflict: ${err.response.data.message}`, { id: toastId });
                     } else if(err.response?.status === 401) {
                         // Token issue
-                        alert("Session expired. Please log in again.");
+                       toast.error("Session expired. Please log in again.", { id: toastId });
                     } else {
-                    alert("Submission failed: " + (err.response?.data?.message || "Server Error"));
+                    toast.error("Submission failed: " + (err.response?.data?.message || "Server Error"), { id: toastId });
                     }
                   }
                 }}
@@ -229,7 +231,7 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold"
+                className="col-span-2 mt-4 hover:bg-indigo-600 text-white py-2 rounded font-bold"
               >
                 Submit Proposal
               </button>
