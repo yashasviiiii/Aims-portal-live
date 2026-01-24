@@ -4,6 +4,7 @@ import axios from "axios";
 import CourseForm from './components/CourseForm';
 import CourseList from './components/CourseList';
 import CourseDetail from './components/CourseDetail';
+import toast from 'react-hot-toast';
 
 const InstructorDashboard = () => {
   const [activeTab, setActiveTab] = useState(
@@ -34,6 +35,7 @@ useEffect(() => {
       setInstructorData(response.data.instructor);
     } catch (error) {
       console.error("Profile Fetch Error:", error);
+      toast.error("Could not load instructor profile.");
       setInstructorData({ name: "Instructor" });
     }
   };
@@ -81,6 +83,7 @@ useEffect(() => {
       setMyCourses(res.data);
     } catch (err) {
       console.error("Failed to fetch courses");
+      toast.error("Failed to load your courses. Please refresh.");
     } finally {
       setLoadingCourses(false);
     }
@@ -112,13 +115,15 @@ useEffect(() => {
         )}
 
         {activeTab === "Add Course" && (
-          <CourseForm 
-            instructorData={instructorData} 
-            allInstructors={allInstructors} 
-            config={config} 
-            onSuccess={() => setActiveTab("My Courses")} 
-          />
-        )}
+  <CourseForm 
+    instructorData={instructorData} 
+    allInstructors={allInstructors} 
+    config={config} 
+    onSuccess={() => {
+      setActiveTab("My Courses");
+    }} 
+  />
+)}
 
         {/* --- MY COURSES & COURSE DETAILS TAB --- */}
         {activeTab === "My Courses" && (

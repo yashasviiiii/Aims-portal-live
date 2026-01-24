@@ -1,6 +1,7 @@
 // src/pages/instructor/components/CourseDetail.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const CourseDetail = ({ course, config, onBack }) => {
   // 1. Unified State Names
@@ -16,7 +17,20 @@ const CourseDetail = ({ course, config, onBack }) => {
 
   // 2. Derive unique options for dropdowns
   const depts = ["All Departments", ...new Set(courseStudents.map(s => s.studentId?.department))].filter(Boolean);
-  const years = ["All Years", ...new Set(courseStudents.map(s => s.studentId?.year))].filter(Boolean).sort();
+  const years = useMemo(() => {
+  const uniqueYears = new Set(
+    courseStudents
+      .map(s => s.studentId?.year)
+      .filter(Boolean)
+      .map(y => String(y).trim()) // Convert all to trimmed strings to ensure exact matches
+  );
+  return ["All Years", ...Array.from(uniqueYears).sort()];
+}, [courseStudents]);
+
+// Dynamic count of currently enrolled students
+const totalEnrolled = useMemo(() => {
+  return courseStudents.filter(s => s.status === 'approved').length;
+}, [courseStudents]);
 
   // Fetch students specific to this component's lifecycle
 const fetchStudents = async () => {
@@ -42,7 +56,7 @@ const fetchStudents = async () => {
       (student.lastName?.toLowerCase() || "").includes(searchTerm);
     
     const matchesDept = deptFilter === "All Departments" || student.department === deptFilter;
-    const matchesYear = yearFilter === "All Years" || String(student.year) === String(yearFilter);
+    const matchesYear = yearFilter === "All Years" || String(student.year).trim() === String(yearFilter);
     const matchesStatus = enrollStatusFilter === "All Status" || enroll.status === enrollStatusFilter;
 
     return matchesSearch && matchesDept && matchesYear && matchesStatus;
@@ -55,21 +69,24 @@ const fetchStudents = async () => {
 
   // Include your handleInstructorAction, downloadGradesTemplate, and uploadGradesExcel here...
   const handleInstructorAction = async (action) => {
-    if (selectedEnrollments.length === 0) return alert("Select students first");
+    if (selectedEnrollments.length === 0) return toast.error("Please select students first");
+
+    const tid = toast.loading(`Processing ${selectedEnrollments.length} requests...`);
     try {
       await axios.post('http://localhost:5000/api/instructor/enrollment-action', {
         enrollmentIds: selectedEnrollments,
         action
       }, config);
-      alert(`Selected students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`);
+      toast.success(`Students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`, { id: tid });
       setSelectedEnrollments([]);
       fetchStudents();
     } catch (err) {
-      alert("Action failed");
+      toast.error("Action failed", { id: tid });
     }
   };
 
   const downloadGradesTemplate = async (courseId) => {
+    let tid;
     try {
       const res = await axios.get(
         `http://localhost:5000/api/instructor/download-grades/${courseId}`,
@@ -86,17 +103,24 @@ const fetchStudents = async () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success("Download started", { id: tid });
     } catch (err) {
-      alert("Failed to download Excel");
+      if (err.response?.status === 400) {
+      toast.error(err.response.data.message || "No students enrolled in the course", { 
+        id: tid,
+        icon: '⚠️' 
+      });
+    } else {
+      toast.error("Server error. Try again later.", { id: tid });
+    }
     }
   };
   
   const uploadGradesExcel = async (courseId, file) => {
     if (!file) return;
-  
+    const tid = toast.loading(`Uploading ${file.name}...`);
     const formData = new FormData();
     formData.append("file", file);
-  
     try {
       setUploadingGrades(true);
       await axios.post(
@@ -110,12 +134,10 @@ const fetchStudents = async () => {
           }
         }
       );
-  
-      alert("Grades uploaded successfully");
+      toast.success("Grades uploaded successfully!", { id: tid });
+      fetchStudents();
     } catch (err) {
-      alert(
-        err.response?.data?.message || "Grade upload failed due to mismatch"
-      );
+      toast.error(err.response?.data?.message || "Upload failed: Data mismatch", { id: tid, duration: 4000 });
     } finally {
       setUploadingGrades(false);
     }
@@ -130,16 +152,29 @@ const fetchStudents = async () => {
   return (
     <div className="animate-fadeIn">
       <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline">← Back to My Courses</button>
-
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100 gap-4">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
                 <div className="flex gap-3 mb-6">
+                  {/* Download Button */}
                   <button
-                    onClick={() => downloadGradesTemplate(course._id)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-blue-700"
-                  >
-                    Download Enrolled Students (Excel)
-                  </button>
-
+  onClick={() => {
+    if (totalEnrolled === 0) {
+      return toast.error("Cannot download: No students enrolled yet", { icon: '🚫' });
+    }
+    downloadGradesTemplate(course._id);
+  }}
+  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+    totalEnrolled === 0 
+      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" 
+      : "bg-white text-blue-600 border border-blue-600 hover:bg-blue-50"
+  }`}
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+  Download Students
+</button>
+                  {/* Upload Button */}
                   <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
                     {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
                     <input
@@ -152,8 +187,9 @@ const fetchStudents = async () => {
                     />
                   </label>
                 </div>
-                 {/* Info Grid */}
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-10">
+                </div>
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 mb-10">
                   {Object.entries({
                     Code: course.courseCode,
                     Name: course.courseName,
@@ -162,12 +198,18 @@ const fetchStudents = async () => {
                     Session: course.session,
                     Credits: course.credits
                   }).map(([label, val]) => (
-                    <div key={label} className="bg-gray-50 p-3 rounded-lg border text-center">
-                      <p className="text-[10px] uppercase font-bold text-gray-400">{label}</p>
-                      <p className="font-bold text-indigo-900 text-sm">{val}</p>
+                    <div key={label} className="bg-white p-4 rounded-xl border border-gray-200 text-center flex flex-col items-center justify-center min-h-[100px] h-auto shadow-sm hover:shadow-md transition-shadow">
+                      <p className="text-[10px] uppercase font-bold text-gray-400 mb-1 tracking-wider">{label}</p>
+                      <p className="font-bold text-indigo-900 text-xs md:text-sm leading-tight break-words w-full">{val}</p>
                     </div>
                   ))}
+                  {/* New Dynamic Enrollment Block */}
+  <div className="bg-white p-4 rounded-xl border border-gray-200 text-center flex flex-col items-center justify-center min-h-[100px] h-auto shadow-sm hover:shadow-md transition-shadow">
+    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1 tracking-wider">Total Enrolled</p>
+    <p className="font-bold text-indigo-900 text-xs md:text-sm leading-tight break-words w-full">{totalEnrolled}</p>
+  </div>
                 </div>
+                  {/*Instructors */}
                 <div className="col-span-6">
             <p className="text-xs font-bold text-gray-500 mb-1">Instructors</p>
             <div className="flex flex-wrap gap-2">
@@ -187,24 +229,35 @@ const fetchStudents = async () => {
 
             </div>
           </div>
-
                 {/* Enrollment Section */}
 <div className="mt-12 mb-8">
   {/* Row 1: Title and Status Actions */}
-  <div className="flex justify-between items-center mb-6">
-    <h3 className="text-xl font-bold text-gray-800 border-l-4 border-green-600 pl-3">
-      Pending Enrollments
-    </h3>
-    <div className="flex gap-2">
+<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <div className="flex flex-wrap items-center gap-3">    
+      <h3 className="text-xl font-bold text-gray-800 border-l-4 border-green-600 pl-3">
+        Enrollments
+      </h3>
+    {/* Dynamic Counter */}
+    <span className="bg-green-100 text-green-700 px-3 py-0.5 rounded-full text-xs font-bold border border-green-200">
+        {filteredEnrollments.length} {filteredEnrollments.length === 1 ? 'Result' : 'Results'}
+      </span>
+      {selectedEnrollments.length > 0 && (
+        <span className="bg-indigo-100 text-indigo-700 px-3 py-0.5 rounded-full text-xs font-bold border border-indigo-200 animate-pulse">
+          {selectedEnrollments.length} Selected
+        </span>
+    )}
+  </div>
+
+    <div className="flex gap-2 w-full md:w-auto">
       <button 
         onClick={() => handleInstructorAction('approve')} 
-        className="bg-green-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 transition-all active:scale-95"
+        className="bg-green-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50"
       >
         Approve Selected
       </button>
       <button 
         onClick={() => handleInstructorAction('reject')} 
-        className="bg-red-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-red-700 transition-all active:scale-95"
+        className="bg-red-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
       >
         Reject Selected
       </button>
@@ -212,7 +265,7 @@ const fetchStudents = async () => {
   </div>
 
   {/* Row 2: Search & Filter Bar */}
-  <div className="flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
+  <div className="flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm mb-6">
     <div className="flex-1 min-w-[300px] relative">
       <input
         type="text"
@@ -222,7 +275,7 @@ const fetchStudents = async () => {
         onChange={(e) => setEnrollSearch(e.target.value)}
       />
     </div>
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <select 
         className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none" 
         value={deptFilter} 
@@ -238,24 +291,25 @@ const fetchStudents = async () => {
         {years.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       <select 
-        className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none" 
-        value={enrollStatusFilter} 
-        onChange={(e) => setEnrollStatusFilter(e.target.value)}
-      >
-        <option value="All Status">All Status</option>
-        <option value="pending_instructor">Pending My Approval</option>
-        <option value="pending_fa">Forwarded to FA</option>
-        <option value="approved">Enrolled</option>
-        <option value="rejected">Rejected</option>
-      </select>
+  className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none max-w-[160px]" 
+  value={enrollStatusFilter} 
+  onChange={(e) => setEnrollStatusFilter(e.target.value)}
+>
+  <option value="All Status">All Status</option>
+  <option value="pending_instructor">Pending My Approval</option>
+  <option value="pending_fa">Forwarded to FA</option>
+  <option value="approved">Enrolled</option>
+  <option value="rejected">Rejected</option>
+  <option value="dropped">Dropped</option>
+  <option value="withdrawn">Withdrawn</option>
+</select>
     </div>
   </div>
             {/* Table Body */}
-<div className="space-y-2 border border-t-0 rounded-b-xl p-2 bg-white min-h-[200px]">
- <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
-    <div className="w-full text-left text-sm">
+<div className="w-full overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <div className="min-w-[800px] bg-white">
       {/* Table Headers Grid */}
-      <div className="grid grid-cols-12 gap-4 px-6 mb-4 text-[10px] font-bold uppercase text-gray-400 tracking-widest bg-gray-50 py-3 rounded-t-xl border-b">
+      <div className="grid grid-cols-12 gap-4 px-6 mb-4 py-3 bg-gray-50 border-b text-[10px] font-bold uppercase text-gray-400 tracking-widest bg-gray-50 py-3 rounded-t-xl border-b">
         <div className="col-span-1 flex justify-center items-center">
           <input 
             type="checkbox" 
@@ -281,6 +335,7 @@ const fetchStudents = async () => {
       </div>
       
       {/* Table Body continues here... */}
+      <div className="p-2 space-y-2">
        {loadingStudents ? (
     <p className="text-center py-10 text-gray-400">Loading students...</p>
   ) : filteredEnrollments.length === 0 ? (
@@ -291,14 +346,18 @@ const fetchStudents = async () => {
         
         {/* Checkbox */}
         <div className="col-span-1 flex justify-center">
-          {enroll.status === 'pending_instructor' ? (
-            <input 
-              type="checkbox" 
-              checked={selectedEnrollments.includes(enroll._id)}
-              onChange={() => toggleSelection(enroll._id)}
-            />
-          ) : <div className="w-2 h-2 rounded-full bg-gray-200"></div>}
-        </div>
+  {enroll.status === 'pending_instructor' ? (
+    <input 
+      type="checkbox" 
+      className="w-4 h-4 cursor-pointer accent-green-600 rounded"
+      checked={selectedEnrollments.includes(enroll._id)}
+      onChange={() => toggleSelection(enroll._id)}
+    />
+  ) : (
+    /* Visual indicator for non-selectable rows */
+    <div className="w-2 h-2 rounded-full bg-gray-200" title="Action not required"></div>
+  )}
+</div>
 
         {/* S.No */}
         <div className="col-span-1 text-center text-gray-300 font-mono text-xs">
@@ -330,28 +389,25 @@ const fetchStudents = async () => {
 
         {/* Status Badge */}
         <div className="col-span-2 flex justify-end pr-4">
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tighter ${
-            enroll.status === 'approved' 
-              ? 'bg-green-100 text-green-700 border-green-200' 
-              : enroll.status === 'pending_fa' 
-              ? 'bg-purple-100 text-purple-700 border-purple-200' 
-              : enroll.status === 'rejected'
-              ? 'bg-red-100 text-red-700 border-red-200'
-              : 'bg-amber-100 text-amber-700 border-amber-200'
-          }`}>
-            {enroll.status === 'approved' ? 'Enrolled' : 
-            enroll.status === 'pending_fa' ? 'Forwarded to FA' : 
-             enroll.status === 'rejected' ? 'Rejected' : 'Pending Approval'}
-          </span>
-        </div>
+  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tighter ${
+    enroll.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
+    enroll.status === 'pending_fa' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+    enroll.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+    enroll.status === 'dropped' ? 'bg-gray-100 text-gray-700 border-gray-200' :
+    enroll.status === 'withdrawn' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+    'bg-amber-100 text-amber-700 border-amber-200'
+  }`}>
+    {enroll.status.replace('_', ' ')}
+  </span>
+</div>
       </div>
     ))
   )}
-</div>
-                  </div>
-                </div>
-                </div>
-                </div>
+  </div>
+  </div>
+  </div>
+  </div>
+  </div>
   );
 };
 

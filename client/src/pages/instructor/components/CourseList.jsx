@@ -1,5 +1,6 @@
 // src/pages/instructor/components/CourseList.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 
 const CourseList = ({ myCourses, loadingCourses, onSelectCourse }) => {
@@ -26,6 +27,13 @@ const CourseList = ({ myCourses, loadingCourses, onSelectCourse }) => {
       return matchesSearch && matchesSession && matchesStatus && matchesYear;
     });
   }, [myCourses, searchQuery, sessionFilter, statusFilter, yearFilter]);
+
+  useEffect(() => {
+    if (filteredCourses.length === 0 && (searchQuery || sessionFilter !== "All Sessions")) {
+      // We don't want to spam, so we just log or use a unique toast ID
+      toast("No matching courses found", { icon: '🔍', id: 'search-none' });
+    }
+  }, [filteredCourses.length]);
 
   // Extract unique sessions/years for dropdown options
   const sessions = ["All Sessions", ...new Set(myCourses.map(c => c.session))];
@@ -119,13 +127,16 @@ const CourseList = ({ myCourses, loadingCourses, onSelectCourse }) => {
             
             {/* Code Button - Now has more space around it */}
             <div className="col-span-2 flex justify-center">
-              <button 
-                onClick={() => onSelectCourse(course)}
-                className="bg-indigo-600 text-white w-20 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-indigo-700 active:scale-95 transition"
-              >
-                {course.courseCode}
-              </button>
-            </div>
+                    <button 
+                      onClick={() => {
+                        onSelectCourse(course);
+                        toast.success(`Viewing ${course.courseCode}`);
+                      }}
+                      className="bg-indigo-600 text-white w-24 py-2 rounded-lg font-bold text-[11px] shadow-sm hover:bg-indigo-700 active:scale-95 transition-all"
+                    >
+                      {course.courseCode}
+                    </button>
+                  </div>
 
             {/* Course Details - Pushed right with pl-12 */}
             <div className="col-span-4 pl-12 flex flex-col justify-center border-l border-gray-50">
