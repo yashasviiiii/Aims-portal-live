@@ -5,3 +5,8 @@
 .input {
   @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800;
 }
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
