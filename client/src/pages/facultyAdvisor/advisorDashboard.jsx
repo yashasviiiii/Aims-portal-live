@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import AdvisorNavbar from '../../components/advisorNavbar';
 import axios from 'axios';
+
+// Component Tabs
 import HomeTab from './components/homeTab';
-import AddCourseTab from './components/advisorDashboard';
-import MyCoursesTab from './components/myCoursesTab';
+import CourseForm from '../instructor/components/CourseForm';
 import ApproveProposalsTab from './components/approveProposalsTab';
 import AllCoursesTab from './components/allcoursesTab';
 import HelpTab from './components/helpTab';
+import CourseDetail from '../instructor/components/CourseDetail';
+import CourseList from '../instructor/components/CourseList';
 
 const AdvisorDashboard = () => {
-  // --- States ---
+  // --- Constants ---
   const DEPARTMENTS = [
     "Computer Science and Engineering",
     "Electrical Engineering",
@@ -19,88 +22,105 @@ const AdvisorDashboard = () => {
     "Chemical Engineering",
     "Humanities and Social Science"
   ];
+  
   const ACADEMIC_SESSIONS = [
-    "2025-II",
-    "2025-S",
+    "2025-II", 
+    "2025-S", 
     "2026-I"
   ];
 
+  // --- Auth & Config ---
+  const token = localStorage.getItem("token");
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+
+  // --- State: General & Navigation ---
   const [userData, setUserData] = useState({ name: "Advisor" });
-
-  // PERSISTENCE LOGIC: Initialize from localStorage or default to "Home"
   const [activeTab, setActiveTab] = useState(localStorage.getItem("activeAdvisorTab") || "Home");
-  
-  // States for "My Courses" (Courses this Advisor teaches)
-  const [myCourses, setMyCourses] = useState([]);
-  const [loadingMyCourses, setLoadingMyCourses] = useState(false);
+  const [instructorData, setInstructorData] = useState({ name: "Instructor" });
 
-  // States for "Approve Courses" (Proposals from all Instructors)
+  // --- State: My Courses (Teaching) ---
+  const [myCourses, setMyCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+
+  // --- State: Approve Course Proposals (Admin) ---
   const [allProposedCourses, setAllProposedCourses] = useState([]);
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  // --- State: All Enrolling Courses & Student Approval ---
   const [enrollingCourses, setEnrollingCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [pendingStudents, setPendingStudents] = useState([]);
+  const [pendingStudents, setPendingStudents] = useState({});
   const [selectedEnrollments, setSelectedEnrollments] = useState([]);
   const [loadingEnrolling, setLoadingEnrolling] = useState(false);
-  
-  // --- NEW: Course meta states ---
+
+  // --- State: Form Meta Data ---
   const [allInstructors, setAllInstructors] = useState([]);
-  const [instructors, setInstructors] = useState([
-    { name: "", instructorId: null, isCoordinator: true } // auto coordinator
-  ]);
-  const [entryYears, setEntryYears] = useState("");
+  const [instructors, setInstructors] = useState([]);
 
-  // New States for Course Detail View
-  const [session, setSession] = useState("");
-
-  const token = localStorage.getItem("token");
-  const config = { headers: { Authorization: `Bearer ${token}` } };
-
-  // --- Effect 1: Load Profile Data ---
+  // --- Effect 1: Load Profile & Instructor Data ---
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
-        setUserData(response.data.instructor);
+        setInstructorData(response.data.instructor);
       } catch (error) {
-        const backupEmail = localStorage.getItem("userEmail");
-        setUserData({ name: backupEmail ? backupEmail.split('@')[0] : "Advisor" });
+        console.error("Profile Fetch Error:", error);
+        setInstructorData({ firstName: "Advisor", lastName: "" });
       }
     };
     fetchProfile();
   }, []);
 
-  // --- Effect 2: Tab Switching & Persistence Logic ---
+  // --- Effect 2: Auto-populate Instructor List for Forms ---
+  useEffect(() => {
+    if (instructorData && instructorData.firstName) {
+      setInstructors([
+        {
+          name: `${instructorData.firstName} ${instructorData.lastName}`,
+          instructorId: instructorData._id,
+          isCoordinator: true
+        }
+      ]);
+    }
+  }, [instructorData]);
+
+  // --- Effect 3: Tab Switching & Persistence ---
   useEffect(() => {
     localStorage.setItem("activeAdvisorTab", activeTab);
 
-    if (activeTab === "My Courses") fetchMyCourses();
-    if (activeTab === "Approve Courses") fetchProposedProposals();
+    if (activeTab === "My Courses") {
+      fetchMyCourses();
+      setSelectedCourse(null);
+    }
+    if (activeTab === "Approve Courses") {
+      fetchProposedProposals();
+    }
     if (activeTab === "All Courses") {
       fetchAllEnrolling();
-      setSelectedCourse(null); 
+      setSelectedCourse(null);
     }
     setSelectedIds([]);
   }, [activeTab]);
 
-  // Fetch all instructors 
+  // --- Effect 4: Fetch Instructor Directory ---
   useEffect(() => {
     axios.get("http://localhost:5000/api/instructor/all", config)
       .then(res => setAllInstructors(res.data))
       .catch(() => {});
   }, []);
-  
+
+  // --- Data Fetching Logic ---
+
   const fetchMyCourses = async () => {
-    setLoadingMyCourses(true);
+    setLoadingCourses(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/fa/my-courses', config);
+      const res = await axios.get('http://localhost:5000/api/instructor/my-courses', config);
       setMyCourses(res.data);
     } catch (err) {
-      console.error("Failed to fetch personal courses");
+      console.error("Failed to fetch courses");
     } finally {
-      setLoadingMyCourses(false);
+      setLoadingCourses(false);
     }
   };
 
@@ -120,11 +140,10 @@ const AdvisorDashboard = () => {
     setLoadingEnrolling(true);
     try {
       const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${courseId}`, config);
-      // Store as: { "course_id_123": [student1, student2] }
-    setPendingStudents(prev => ({
-      ...prev,
-      [courseId]: res.data
-    }));
+      setPendingStudents(prev => ({
+        ...prev,
+        [courseId]: res.data
+      }));
     } catch (err) {
       console.error("Error fetching students");
     } finally {
@@ -132,52 +151,51 @@ const AdvisorDashboard = () => {
     }
   };
 
-// Updated handleFinalFAAction in AdvisorDashboard.jsx
-const handleFinalFAAction = async (action, singleId = null, courseId = null) => {
-  // Determine which IDs to process: either the specific one clicked or the bulk selection
-  const idsToProcess = singleId ? [singleId] : selectedEnrollments;
-
-  if (idsToProcess.length === 0) {
-    return alert("Please select at least one student.");
-  }
-
-  const confirmMsg = action === 'approve' 
-    ? `Are you sure you want to finalize enrollment for ${idsToProcess.length} student(s)?` 
-    : `Reject ${idsToProcess.length} selected student(s)?`;
-  
-  if (!window.confirm(confirmMsg)) return;
-
-  try {
-    const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
-      enrollmentIds: idsToProcess,
-      action: action
-    }, config);
-
-    alert(response.data.message);
-
-    // 1. Clear bulk selection if a bulk action was performed
-    if (!singleId) setSelectedEnrollments([]);
-
-    // 2. REFRESH LOGIC
-    // Use the courseId passed from the tab, or fallback to the selectedCourse state
-    const targetCourseId = courseId || (selectedCourse ? selectedCourse._id : null);
-    
-    if (targetCourseId) {
-      fetchStudentsForCourse(targetCourseId);
-    }
-  } catch (err) {
-    console.error("FA Approval Error:", err);
-    alert("Failed to process approval.");
-  }
-};
-
   const fetchProposedProposals = async () => {
     setLoadingProposals(true);
     try {
       const res = await axios.get('http://localhost:5000/api/fa/proposed-proposals', config);
       setAllProposedCourses(res.data);
-    } catch (err) { console.error("Failed to fetch proposals"); }
-    finally { setLoadingProposals(false); }
+    } catch (err) {
+      console.error("Failed to fetch proposals");
+    } finally {
+      setLoadingProposals(false);
+    }
+  };
+
+  // --- Action Handlers ---
+
+  const handleFinalFAAction = async (action, singleId = null, courseId = null) => {
+    const idsToProcess = singleId ? [singleId] : selectedEnrollments;
+
+    if (idsToProcess.length === 0) {
+      return alert("Please select at least one student.");
+    }
+
+    const confirmMsg = action === 'approve'
+      ? `Are you sure you want to finalize enrollment for ${idsToProcess.length} student(s)?`
+      : `Reject ${idsToProcess.length} selected student(s)?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
+        enrollmentIds: idsToProcess,
+        action: action
+      }, config);
+
+      alert(response.data.message);
+
+      if (!singleId) setSelectedEnrollments([]);
+
+      const targetCourseId = courseId || (selectedCourse ? selectedCourse._id : null);
+      if (targetCourseId) {
+        fetchStudentsForCourse(targetCourseId);
+      }
+    } catch (err) {
+      console.error("FA Approval Error:", err);
+      alert("Failed to process approval.");
+    }
   };
 
   const handleProposalAction = async (action) => {
@@ -185,9 +203,9 @@ const handleFinalFAAction = async (action, singleId = null, courseId = null) => 
     if (!window.confirm(`Confirm ${action} for selected courses?`)) return;
 
     try {
-      await axios.post('http://localhost:5000/api/fa/handle-proposals', { 
-        courseIds: selectedIds, 
-        action: action 
+      await axios.post('http://localhost:5000/api/fa/handle-proposals', {
+        courseIds: selectedIds,
+        action: action
       }, config);
       alert(`Courses ${action}ed successfully.`);
       setSelectedIds([]);
@@ -198,7 +216,7 @@ const handleFinalFAAction = async (action, singleId = null, courseId = null) => 
   };
 
   const toggleStudentSelection = (enrollId) => {
-    setSelectedEnrollments(prev => 
+    setSelectedEnrollments(prev =>
       prev.includes(enrollId) ? prev.filter(id => id !== enrollId) : [...prev, enrollId]
     );
   };
@@ -211,45 +229,66 @@ const handleFinalFAAction = async (action, singleId = null, courseId = null) => 
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdvisorNavbar name={userData.name || "Advisor"} setActiveTab={setActiveTab} />
+      <AdvisorNavbar 
+        name={`${instructorData?.firstName || 'Advisor'} ${instructorData?.lastName || ''}`} 
+        setActiveTab={setActiveTab} 
+      />
 
       <main className="max-w-6xl mx-auto mt-8 p-6 bg-white shadow-sm rounded-lg border border-gray-200 min-h-[60vh]">
         
         {/* --- HOME TAB --- */}
         {activeTab === "Home" && (
-          <HomeTab name={userData.name || "Advisor"} /> 
+          <HomeTab name={instructorData.firstName || "Advisor"} />
         )}
 
         {/* --- ADD COURSE TAB --- */}
         {activeTab === "Add Course" && (
-          <AddCourseTab 
-            allInstructors={allInstructors}
-            config={config}
-            setActiveTab={setActiveTab}
-            departments={DEPARTMENTS}
-            academicSessions={ACADEMIC_SESSIONS}
+          <CourseForm 
+            instructorData={instructorData} 
+            allInstructors={allInstructors} 
+            config={config} 
+            onSuccess={() => setActiveTab("My Courses")} 
           />
         )}
 
         {/* --- MY COURSES TAB --- */}
         {activeTab === "My Courses" && (
-          <MyCoursesTab 
-            myCourses={myCourses} 
-            loading={loadingMyCourses} 
-          />
+          !selectedCourse ? (
+            <CourseList 
+              myCourses={myCourses}
+              loadingCourses={loadingCourses} 
+              onSelectCourse={(c) => setSelectedCourse(c)} 
+            />
+          ) : (
+            <CourseDetail 
+              course={selectedCourse} 
+              config={config} 
+              onBack={() => { setSelectedCourse(null); fetchMyCourses(); }} 
+            />
+          )
         )}
         
-        {/* --- ALL COURSES (Approval Drill-down) --- */}
+        {/* --- ALL COURSES (Student Enrollment Approvals) --- */}
         {activeTab === "All Courses" && (
+          !selectedCourse?(
           <AllCoursesTab 
             enrollingCourses={enrollingCourses}
             fetchStudentsForCourse={fetchStudentsForCourse}
             pendingStudents={pendingStudents}
             handleApproval={handleFinalFAAction}
           />
+        ):(
+        
+            <CourseDetail 
+              course={selectedCourse} 
+              config={config} 
+              onBack={() => { setSelectedCourse(null); fetchMyCourses(); }} 
+            />
+          
+        )
         )}
 
-        {/* --- APPROVE COURSES TAB --- */}
+        {/* --- APPROVE PROPOSALS TAB --- */}
         {activeTab === "Approve Courses" && (
           <ApproveProposalsTab 
             allProposedCourses={allProposedCourses}
@@ -263,7 +302,7 @@ const handleFinalFAAction = async (action, singleId = null, courseId = null) => 
 
         {/* --- HELP TAB --- */}
         {activeTab === "Help" && (
-          <HelpTab/>
+          <HelpTab />
         )}
 
       </main>

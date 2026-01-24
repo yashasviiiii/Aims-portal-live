@@ -12,7 +12,7 @@ const ApproveProposalsTab = ({
     <div className="animate-fadeIn">
       <div className="flex justify-between items-end mb-6 border-b pb-4">
         <div>
-          <h2 className="text-2xl font-bold text-indigo-900">Departmental Approvals</h2>
+          <h2 className="text-2xl font-bold text-indigo-900">Pending Approvals</h2>
           <p className="text-xs text-gray-500">Review proposals submitted by all faculty members.</p>
         </div>
         <div className="flex gap-2">

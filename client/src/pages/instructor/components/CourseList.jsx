@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
 
-const CourseList = ({ myCourses, loadingCourses, onSelectCourse }) => {
+const CourseList = ({ myCourses, loadingCourses, onSelectCourse ,heading}) => {
    // 1. Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [sessionFilter, setSessionFilter] = useState("All Sessions");
@@ -44,7 +44,9 @@ const CourseList = ({ myCourses, loadingCourses, onSelectCourse }) => {
   return (
     <div className="animate-fadeIn">   
             
-                <h2 className="text-2xl font-bold text-indigo-900 mb-6">My Course Offerings</h2>
+                <h2 className="text-2xl font-bold text-indigo-900 mb-6">
+  {heading || "My Course Offerings"}
+</h2>
 
                 {/* 3. Search & Filter Bar */}
       <div className="flex flex-wrap gap-3 mb-8 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
