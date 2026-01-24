@@ -6,7 +6,8 @@ import {
   creditCourses, 
   getMyRecords,
   getStudentRecord,
-  downloadTranscript
+  downloadTranscript,
+  courseAction
 } from "../controllers/student.controller.js";
 
 const router = express.Router();
@@ -27,5 +28,7 @@ router.get("/my-records", verifyJWT, getMyRecords);
 router.get("/record", verifyJWT, getStudentRecord);
 
 router.get("/download-transcript", verifyJWT, requireStudent, downloadTranscript);
+
+router.post("/course-action", verifyJWT, courseAction);
 
 export default router;

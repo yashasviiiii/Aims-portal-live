@@ -22,29 +22,38 @@ export const studentDashboard = async (req, res) => {
 // FETCH COURSES FILTERED BY STUDENT'S ENTRY YEAR
 export const getAllCourses = async (req, res) => {
   try {
-    const user = await Name.findById(req.userId); 
+    const user = await Name.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const courses = await Course.find({ 
+    const courses = await Course.find({
       status: "enrolling",
-      allowedEntryYears: user.year 
-    }).populate('instructors.instructorId', 'firstName lastName'); // Populate names
+      allowedEntryYears: user.year
+    }).populate("instructors.instructorId", "firstName lastName");
 
     const myEnrollments = await Enrollment.find({ studentId: req.userId });
 
     const coursesWithStatus = courses.map(course => {
-      const enrolled = myEnrollments.find(e => e.courseId.toString() === course._id.toString());
-      
-      // Create a clean string of all professor names
+      const enrollment = myEnrollments.find(
+        e => e.courseId.toString() === course._id.toString()
+      );
+
       const allProfNames = course.instructors
-        .map(i => i.instructorId ? `Prof. ${i.instructorId.firstName} ${i.instructorId.lastName}` : "Unknown Prof")
+        .map(i =>
+          i.instructorId
+            ? `Prof. ${i.instructorId.firstName} ${i.instructorId.lastName}`
+            : "Unknown Prof"
+        )
         .join(", ");
 
-      return { 
-        ...course._doc, 
-        instructorDisplay: allProfNames, // New field for easy searching/display
-        isCredited: !!enrolled,
-        enrollmentStatus: enrolled ? enrolled.status : "not_applied" 
+      return {
+        _id: course._id,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        offeringDept: course.offeringDept,
+        credits: course.credits,
+        slot: course.slot,
+        instructorDisplay: allProfNames,
+        enrollmentStatus: enrollment ? enrollment.status : "not_enrolled"
       };
     });
 
@@ -53,6 +62,7 @@ export const getAllCourses = async (req, res) => {
     res.status(500).json({ message: "Error fetching courses" });
   }
 };
+
 
 // SEND ENROLLMENT REQUESTS
 export const creditCourses = async (req, res) => {
@@ -154,7 +164,7 @@ export const getStudentRecord = async (req, res) => {
 
     const enrollments = await Enrollment.find({
       studentId,
-      status: "approved",
+      status:  {$in: ["approved", "withdrawn"]} 
     }).populate("courseId");
 
     if (!enrollments || enrollments.length === 0) {
@@ -247,7 +257,7 @@ export const downloadTranscript = async (req, res) => {
 
     const enrollments = await Enrollment.find({
       studentId,
-      status: "approved",
+      status: { $in: ["approved", "withdrawn"] }
     }).populate("courseId");
 
     const sessions = {};
@@ -275,10 +285,15 @@ export const downloadTranscript = async (req, res) => {
         courseCode: e.courseId.courseCode,
         courseName: e.courseId.courseName,
         credits,
-        grade: grade || "NA",
+        grade: e.status === "withdrawn" ? "W" : (grade || "NA"),
+        status: e.status,
       });
 
-      if (grade && gradePoints[grade] !== undefined) {
+      if (
+        e.status === "approved" &&
+        grade &&
+        gradePoints[grade] !== undefined
+      ) {
         const points = gradePoints[grade] * credits;
 
         sessions[sessionName].totalCredits += credits;
@@ -288,6 +303,7 @@ export const downloadTranscript = async (req, res) => {
         totalPointsAll += points;
       }
     });
+
 
     Object.values(sessions).forEach((s) => {
       s.sgpa = s.totalCredits > 0 ? s.totalPoints / s.totalCredits : null;
@@ -340,5 +356,91 @@ export const downloadTranscript = async (req, res) => {
       message: "Failed to generate transcript",
       error: err.message,
     });
+  }
+};
+
+export const courseAction = async (req, res) => {
+  try {
+    const studentId = req.userId;
+    const { courseIds, action } = req.body;
+
+    if (!courseIds?.length) {
+      return res.status(400).json({ message: "No courses selected" });
+    }
+
+    if (!["credit", "drop", "withdraw"].includes(action)) {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
+    // ---------- CREDIT (create enrollment if needed) ----------
+    if (action === "credit") {
+      for (const courseId of courseIds) {
+        let enrollment = await Enrollment.findOne({ studentId, courseId });
+
+        if (!enrollment) {
+          const course = await Course.findById(courseId);
+
+          if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+          }
+
+          const coordinators = course.instructors.filter(i => i.isCoordinator);
+
+          const assignedInstructor =
+            coordinators.length > 0
+              ? coordinators[0]
+              : course.instructors[0];
+
+          if (!assignedInstructor) {
+            return res.status(400).json({
+              message: `No instructor assigned for ${course.courseCode}`
+            });
+          }
+
+          await Enrollment.create({
+            studentId,
+            courseId,
+            instructorId: assignedInstructor.instructorId,
+            session: course.session,
+            status: "pending_instructor"
+          });
+        }
+
+      }
+
+      return res
+        .status(200)
+        .json({ message: "Credit request submitted successfully" });
+    }
+
+    // ---------- DROP / WITHDRAW (must already exist) ----------
+    const statusMap = {
+      drop: "dropped",
+      withdraw: "withdrawn"
+    };
+
+    const enrollments = await Enrollment.find({
+      studentId,
+      courseId: { $in: courseIds }
+    });
+
+    if (!enrollments.length) {
+      return res.status(404).json({ message: "Enrollment records not found" });
+    }
+
+    for (const e of enrollments) {
+      if (["approved", "dropped", "withdrawn"].includes(e.status)) {
+        continue; // block invalid transitions
+      }
+
+      e.status = statusMap[action];
+      await e.save();
+    }
+
+    res.status(200).json({ message: "Course status updated successfully" });
+
+  } catch (err) {
+    console.error("courseAction error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

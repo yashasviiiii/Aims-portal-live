@@ -58,7 +58,55 @@ const StudentDashboard = () => {
 
     fetchRecord();
   }, [activeTab]);
+  //helper function to calculate SGPA
+  const calculateSGPA = (courses) => {
+  let totalCredits = 0;
+  let weightedSum = 0;
 
+  courses.forEach(c => {
+    if (
+      c.status === "approved" &&
+      gradePoints[c.grade] !== undefined
+    ) {
+      const credits = c.course.credits;
+      totalCredits += credits;
+      weightedSum += credits * gradePoints[c.grade];
+    }
+  });
+
+  return totalCredits === 0 ? null : (weightedSum / totalCredits);
+};
+
+const gradePoints = {
+  "A": 10,
+  "A-": 9,
+  "B": 8,
+  "B-": 7,
+  "C": 6,
+  "C-": 5,
+  "D": 4,
+  "F": 0
+};
+
+const calculateCGPA = (records) => {
+  let totalCredits = 0;
+  let weightedSum = 0;
+
+  records.forEach(session => {
+    session.courses.forEach(c => {
+      if (
+        c.status === "approved" &&
+        gradePoints[c.grade] !== undefined
+      ) {
+        const credits = c.course.credits;
+        totalCredits += credits;
+        weightedSum += credits * gradePoints[c.grade];
+      }
+    });
+  });
+
+  return totalCredits === 0 ? null : weightedSum / totalCredits;
+};
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <StudentNavbar rollNumber={roll} setActiveTab={setActiveTab} />
@@ -183,7 +231,7 @@ const StudentDashboard = () => {
                         <p className="text-xs text-indigo-700">Calculated based on all completed sessions</p>
                       </div>
                       <p className="text-4xl font-black text-indigo-700">
-                        {record.cgpa.toFixed(2)}
+                        {calculateCGPA(record.records)?.toFixed(2)}
                       </p>
                     </div>
                   )}
@@ -209,11 +257,11 @@ const StudentDashboard = () => {
                       </span>
                     </span>
 
-                    {typeof session.sgpa === "number" && (
+                    {calculateSGPA(session.courses) !== null && (
                       <span>
                         SGPA:{" "}
                         <span className="text-white font-black">
-                          {session.sgpa.toFixed(2)}
+                          {calculateSGPA(session.courses).toFixed(2)}
                         </span>
                       </span>
                     )}
@@ -233,7 +281,7 @@ const StudentDashboard = () => {
                     </thead>
 
                     <tbody className="divide-y divide-gray-100">
-                      {session.courses.map((c, i) => (
+                      {session.courses.filter(c => c.status === "approved" || c.status === "withdrawn").map((c, i) => (
                         <tr key={i} className="hover:bg-gray-50 transition-colors">
                           <td className="p-3 text-gray-400 font-mono">{i + 1}</td>
                           <td className="p-3">
@@ -250,7 +298,7 @@ const StudentDashboard = () => {
                             {c.category}
                           </td>
                           <td className="p-3 text-center font-black text-indigo-600 text-base">
-                            {c.grade || "N/A"}
+                            {c.status === "withdrawn" ? "W" : (c.grade || "N/A")}
                           </td>
                         </tr>
                       ))}

@@ -4,6 +4,16 @@ import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 export default function Signup() {
+
+  const DEPARTMENTS = [
+    "Computer Science and Engineering",
+    "Electrical Engineering",
+    "Mechanical Engineering",
+    "Civil Engineering",
+    "Artificial Intelligence",
+    "Chemical Engineering",
+    "Humanities and Social Science"
+  ];
   const [form, setForm] = useState({});
   const navigate = useNavigate();
 
@@ -104,13 +114,17 @@ export default function Signup() {
             <option value="COURSE_INSTRUCTOR">Instructor</option>
           </select>
 
-          <input
+          <select
             name="department"
-            placeholder="Department"
             className="input bg-white/80 col-span-2"
             onChange={handleChange}
             required
-          />
+          >
+            <option value="">Select Department</option>
+            {DEPARTMENTS.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
 
           <button
             type="submit"
