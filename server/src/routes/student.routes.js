@@ -7,8 +7,10 @@ import {
   getMyRecords,
   getStudentRecord,
   downloadTranscript,
-  courseAction
+  courseAction,
+  getCourseStudentsForStudent
 } from "../controllers/student.controller.js";
+import { getCourseEnrollments } from "../controllers/instructor.controller.js";
 
 const router = express.Router();
 
@@ -30,5 +32,8 @@ router.get("/record", verifyJWT, getStudentRecord);
 router.get("/download-transcript", verifyJWT, requireStudent, downloadTranscript);
 
 router.post("/course-action", verifyJWT, courseAction);
+router.get("/course-students/:courseId", verifyJWT, requireStudent, getCourseEnrollments);
+router.get("/course-students/:courseId", requireStudent,getCourseStudentsForStudent);
+
 
 export default router;

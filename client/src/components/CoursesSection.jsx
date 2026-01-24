@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import StudentCourseDetail from "../pages/student/StudentCourseDetail";
 
 const CourseSection = ({ rollNumber }) => {
   const [courses, setCourses] = useState([]);
@@ -10,6 +11,7 @@ const CourseSection = ({ rollNumber }) => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const token = localStorage.getItem("token");
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -188,7 +190,18 @@ const handleAction = async (action) => {
 
 
   if (loading) return <div className="p-10 text-center">Loading courses...</div>;
-
+  if (selectedCourse) {
+    return (
+      <StudentCourseDetail
+        course={selectedCourse}
+        onBack={() => {
+          setSelectedCourse(null);
+          fetchCourses();
+        }}
+      />
+    );
+  }
+  
   return (
     <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200">
       <div className="flex justify-between items-center mb-6">
@@ -254,8 +267,11 @@ const handleAction = async (action) => {
         <table className="w-full text-left border-collapse">
           <thead className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
             <tr>
-                 <th className="p-4 text-center"><input
-                    type="checkbox"
+                 <th className="p-4 text-center">
+                <input
+              type="checkbox"
+              onClick={(e) => e.stopPropagation()}
+
                     checked={
                       courses.filter(isSelectable).length > 0 &&
                       courses.filter(isSelectable).every(c => selected.includes(c._id))
@@ -270,13 +286,15 @@ const handleAction = async (action) => {
           </thead>
           <tbody className="text-sm">
             {filteredCourses.map((course, idx) => (
-              <tr key={course._id} className="border-t hover:bg-indigo-50/30 transition-colors">
+              <tr key={course._id} onClick={() => setSelectedCourse(course)} className="border-t hover:bg-indigo-50/30 transition-colors cursor-pointer">
+
                 <td className="p-4">
                 {!["approved", "dropped", "withdrawn"].includes(course.enrollmentStatus) && (
                   <input
                     type="checkbox"
                     className="w-4 h-4 rounded text-indigo-600"
                     checked={selected.includes(course._id)}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={() => handleToggle(course._id)}
                   />
                 )}
@@ -318,5 +336,6 @@ const handleAction = async (action) => {
     </div>
   );
 };
+
 
 export default CourseSection;
