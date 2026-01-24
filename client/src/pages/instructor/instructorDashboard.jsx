@@ -126,7 +126,9 @@ useEffect(() => {
             <CourseList 
               myCourses={myCourses}
               loadingCourses={loadingCourses} 
+              heading="My Course Offerings"
               onSelectCourse={(c) => setSelectedCourse(c)} 
+              
             />
           ) : (
             <CourseDetail 
