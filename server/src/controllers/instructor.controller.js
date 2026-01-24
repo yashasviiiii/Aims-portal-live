@@ -3,6 +3,7 @@ import Enrollment from '../models/Enrollment.js';
 import Name from "../models/name.js";
 import ExcelJS from "exceljs";
 import CourseInstructor from "../models/CourseInstructor.js";
+import Student from "../models/Students.js"
 
 export const instructorDashboard = async (req, res) => {
   try {
@@ -142,7 +143,8 @@ export const getMyCourses = async (req, res) => {
     const courses = await Course.find({
       "instructors.instructorId": req.userId
     })
-    .populate("instructors.instructorId", "firstName lastName email");
+    .populate("instructors.instructorId", "firstName lastName email")
+    .sort({createdAt:-1});
 
     res.status(200).json(courses);
   } catch (err) {
@@ -189,22 +191,28 @@ export const handleStudentRequest = async (req, res) => {
 export const getCourseEnrollments = async (req, res) => {
   try {
     const { courseId } = req.params;
+
+    if (!courseId.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({ message: "Invalid Course ID format" });
+    }
+
     const course = await Course.findById(courseId)
       .populate("instructors.instructorId", "firstName lastName email");
 
-    if (!course) {
-      return res.status(404).json({ message: "Course not found" });
-    }
-    const enrollments = await Enrollment.find({
-      courseId,
-      status: { $in: ['pending_instructor', 'pending_fa', 'approved'] }
-    }).populate("studentId", "email");
+    
+    const enrollments = await Enrollment.find({ courseId })
+      .populate({
+        path: "studentId",
+        model: "Name", // Matches your export default mongoose.model("Name", nameSchema)
+        select: "firstName lastName email department year", 
+      })
+      .lean();
     res.status(200).json({
       course,
-      students: enrollments
+      students: enrollments || []
     });
   } catch (err) {
-    console.error(err);
+    console.error("DETAILED BACKEND ERROR:", err);
     res.status(500).json({ message: "Error fetching course enrollments" });
   }
 };
@@ -224,17 +232,28 @@ export const getAllInstructors = async (req, res) => {
 };
 
 
+
+
 export const handleInstructorAction = async (req, res) => {
   try {
     const { enrollmentIds, action } = req.body; // action: 'approve' or 'reject'
-    const newStatus = action === 'approve' ? 'pending_fa' : 'rejected';
+    // 1. Validation: Ensure we have IDs to process
+    if (!enrollmentIds || enrollmentIds.length === 0) {
+      return res.status(400).json({ message: "No students selected" });
+    }
 
-    await Enrollment.updateMany(
-      { _id: { $in: enrollmentIds } },
+    const result = await Enrollment.updateMany(
+      { 
+        _id: { $in: enrollmentIds },
+        status: 'pending_instructor' 
+      },
       { $set: { status: newStatus } }
     );
 
-    res.json({ message: `Students ${action}ed successfully` });
+    res.json({ 
+      message: `Successfully ${action}ed ${result.modifiedCount} students.`,
+      count: result.modifiedCount 
+    });
   } catch (err) {
     res.status(500).json({ message: "Action failed" });
   }

@@ -36,8 +36,7 @@ router.get(
 
 // --- STUDENT ENROLLMENT WORKFLOW ---
 
-// 1. Get students who applied for this instructor's courses (Status: 'pending_instructor')
-router.get("/pending-enrollments", verifyJWT, requireInstructor, getPendingEnrollments);
+
 
 // 2. Instructor approves/rejects student (Moves status to 'pending_fa' or 'rejected')
 router.post("/handle-student-request", verifyJWT, requireInstructor, handleStudentRequest);

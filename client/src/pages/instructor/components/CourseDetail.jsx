@@ -1,0 +1,358 @@
+// src/pages/instructor/components/CourseDetail.jsx
+import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
+
+const CourseDetail = ({ course, config, onBack }) => {
+  // 1. Unified State Names
+  const [courseStudents, setCourseStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [uploadingGrades, setUploadingGrades] = useState(false);
+  const [selectedEnrollments, setSelectedEnrollments] = useState([]);
+  // 1. New Filter States
+  const [enrollSearch, setEnrollSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("All Departments");
+  const [yearFilter, setYearFilter] = useState("All Years");
+  const [enrollStatusFilter, setEnrollStatusFilter] = useState("All Status");
+
+  // 2. Derive unique options for dropdowns
+  const depts = ["All Departments", ...new Set(courseStudents.map(s => s.studentId?.department))].filter(Boolean);
+  const years = ["All Years", ...new Set(courseStudents.map(s => s.studentId?.year))].filter(Boolean).sort();
+
+  // Fetch students specific to this component's lifecycle
+const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${course._id}`, config);
+      setCourseStudents(res.data.students);
+    } catch (err) { 
+      console.error("Failed to fetch students:", err); 
+    } finally { 
+      setLoadingStudents(false); 
+    }
+  };
+  // 3. Filtered Logic
+ const filteredEnrollments = useMemo(() => {
+  return courseStudents.filter(enroll => {
+    const student = enroll.studentId || {};
+    const searchTerm = enrollSearch.toLowerCase();
+
+    const matchesSearch = 
+      (student.email?.toLowerCase() || "").includes(searchTerm) || 
+      (student.firstName?.toLowerCase() || "").includes(searchTerm) ||
+      (student.lastName?.toLowerCase() || "").includes(searchTerm);
+    
+    const matchesDept = deptFilter === "All Departments" || student.department === deptFilter;
+    const matchesYear = yearFilter === "All Years" || String(student.year) === String(yearFilter);
+    const matchesStatus = enrollStatusFilter === "All Status" || enroll.status === enrollStatusFilter;
+
+    return matchesSearch && matchesDept && matchesYear && matchesStatus;
+  });
+}, [courseStudents, enrollSearch, deptFilter, yearFilter, enrollStatusFilter]);
+ 
+    useEffect(() => {
+    fetchStudents();
+  }, [course]);
+
+  // Include your handleInstructorAction, downloadGradesTemplate, and uploadGradesExcel here...
+  const handleInstructorAction = async (action) => {
+    if (selectedEnrollments.length === 0) return alert("Select students first");
+    try {
+      await axios.post('http://localhost:5000/api/instructor/enrollment-action', {
+        enrollmentIds: selectedEnrollments,
+        action
+      }, config);
+      alert(`Selected students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`);
+      setSelectedEnrollments([]);
+      fetchStudents();
+    } catch (err) {
+      alert("Action failed");
+    }
+  };
+
+  const downloadGradesTemplate = async (courseId) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/instructor/download-grades/${courseId}`,
+        {
+          ...config,
+          responseType: "blob"
+        }
+      );
+  
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `course_${courseId}_grades.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert("Failed to download Excel");
+    }
+  };
+  
+  const uploadGradesExcel = async (courseId, file) => {
+    if (!file) return;
+  
+    const formData = new FormData();
+    formData.append("file", file);
+  
+    try {
+      setUploadingGrades(true);
+      await axios.post(
+        `http://localhost:5000/api/instructor/upload-grades/${courseId}`,
+        formData,
+        {
+          ...config,
+          headers: {
+            ...config.headers,
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+  
+      alert("Grades uploaded successfully");
+    } catch (err) {
+      alert(
+        err.response?.data?.message || "Grade upload failed due to mismatch"
+      );
+    } finally {
+      setUploadingGrades(false);
+    }
+  };
+
+    const toggleSelection = (id) => {
+  setSelectedEnrollments(prev => 
+    prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+  );
+};
+
+  return (
+    <div className="animate-fadeIn">
+      <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline">← Back to My Courses</button>
+
+                <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
+                <div className="flex gap-3 mb-6">
+                  <button
+                    onClick={() => downloadGradesTemplate(course._id)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-blue-700"
+                  >
+                    Download Enrolled Students (Excel)
+                  </button>
+
+                  <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
+                    {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls"
+                      hidden
+                      onChange={(e) =>
+                        uploadGradesExcel(course._id, e.target.files[0])
+                      }
+                    />
+                  </label>
+                </div>
+                 {/* Info Grid */}
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-10">
+                  {Object.entries({
+                    Code: course.courseCode,
+                    Name: course.courseName,
+                    Dept: course.offeringDept,
+                    Slot: course.slot,
+                    Session: course.session,
+                    Credits: course.credits
+                  }).map(([label, val]) => (
+                    <div key={label} className="bg-gray-50 p-3 rounded-lg border text-center">
+                      <p className="text-[10px] uppercase font-bold text-gray-400">{label}</p>
+                      <p className="font-bold text-indigo-900 text-sm">{val}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="col-span-6">
+            <p className="text-xs font-bold text-gray-500 mb-1">Instructors</p>
+            <div className="flex flex-wrap gap-2">
+              {course.instructors?.map((i, idx) => (
+              <span
+                key={idx}
+                className={`px-2 py-1 text-xs rounded-full border ${
+                  i.isCoordinator
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-gray-100 text-gray-700 border-gray-300'
+                }`}
+              >
+                {i.instructorId?.firstName} {i.instructorId?.lastName}
+                {i.isCoordinator && " (Coordinator)"}
+              </span>
+            ))}
+
+            </div>
+          </div>
+
+                {/* Enrollment Section */}
+<div className="mt-12 mb-8">
+  {/* Row 1: Title and Status Actions */}
+  <div className="flex justify-between items-center mb-6">
+    <h3 className="text-xl font-bold text-gray-800 border-l-4 border-green-600 pl-3">
+      Pending Enrollments
+    </h3>
+    <div className="flex gap-2">
+      <button 
+        onClick={() => handleInstructorAction('approve')} 
+        className="bg-green-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-green-700 transition-all active:scale-95"
+      >
+        Approve Selected
+      </button>
+      <button 
+        onClick={() => handleInstructorAction('reject')} 
+        className="bg-red-600 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-red-700 transition-all active:scale-95"
+      >
+        Reject Selected
+      </button>
+    </div>
+  </div>
+
+  {/* Row 2: Search & Filter Bar */}
+  <div className="flex flex-wrap gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
+    <div className="flex-1 min-w-[300px] relative">
+      <input
+        type="text"
+        placeholder="Search roll no or name..."
+        className="w-full pl-4 pr-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white"
+        value={enrollSearch}
+        onChange={(e) => setEnrollSearch(e.target.value)}
+      />
+    </div>
+    <div className="flex gap-2">
+      <select 
+        className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none" 
+        value={deptFilter} 
+        onChange={(e) => setDeptFilter(e.target.value)}
+      >
+        {depts.map(d => <option key={d} value={d}>{d}</option>)}
+      </select>
+      <select 
+        className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none" 
+        value={yearFilter} 
+        onChange={(e) => setYearFilter(e.target.value)}
+      >
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+      <select 
+        className="px-3 py-2 rounded-lg border border-gray-300 text-xs bg-white cursor-pointer hover:border-green-500 outline-none" 
+        value={enrollStatusFilter} 
+        onChange={(e) => setEnrollStatusFilter(e.target.value)}
+      >
+        <option value="All Status">All Status</option>
+        <option value="pending_instructor">Pending My Approval</option>
+        <option value="pending_fa">Forwarded to FA</option>
+        <option value="approved">Enrolled</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+  </div>
+            {/* Table Body */}
+<div className="space-y-2 border border-t-0 rounded-b-xl p-2 bg-white min-h-[200px]">
+ <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
+    <div className="w-full text-left text-sm">
+      {/* Table Headers Grid */}
+      <div className="grid grid-cols-12 gap-4 px-6 mb-4 text-[10px] font-bold uppercase text-gray-400 tracking-widest bg-gray-50 py-3 rounded-t-xl border-b">
+        <div className="col-span-1 flex justify-center items-center">
+          <input 
+            type="checkbox" 
+            className="w-4 h-4 cursor-pointer accent-green-600"
+            onChange={(e) => {
+              // Only select students who are actually pending_instructor from the current filtered list
+              const toSelect = filteredEnrollments
+                .filter(s => s.status === 'pending_instructor')
+                .map(s => s._id);
+              setSelectedEnrollments(e.target.checked ? toSelect : []);
+            }} 
+            checked={
+              selectedEnrollments.length > 0 && 
+              filteredEnrollments.filter(s => s.status === 'pending_instructor').every(s => selectedEnrollments.includes(s._id))
+            }
+          />
+        </div>
+        <div className="col-span-1 text-center">S.No</div>
+        <div className="col-span-3">Roll No & Name</div>
+        <div className="col-span-3 text-center">Dept | Year</div>
+        <div className="col-span-2 text-center">Grade</div>
+        <div className="col-span-2 text-right pr-4">Status</div>
+      </div>
+      
+      {/* Table Body continues here... */}
+       {loadingStudents ? (
+    <p className="text-center py-10 text-gray-400">Loading students...</p>
+  ) : filteredEnrollments.length === 0 ? (
+    <p className="text-center py-10 text-gray-400 italic">No enrollment requests found.</p>
+  ) : (
+    filteredEnrollments.map((enroll, i) => (
+      <div key={enroll._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border border-gray-100 rounded-xl hover:border-indigo-200 transition-all shadow-sm">
+        
+        {/* Checkbox */}
+        <div className="col-span-1 flex justify-center">
+          {enroll.status === 'pending_instructor' ? (
+            <input 
+              type="checkbox" 
+              checked={selectedEnrollments.includes(enroll._id)}
+              onChange={() => toggleSelection(enroll._id)}
+            />
+          ) : <div className="w-2 h-2 rounded-full bg-gray-200"></div>}
+        </div>
+
+        {/* S.No */}
+        <div className="col-span-1 text-center text-gray-300 font-mono text-xs">
+          {String(i + 1).padStart(2, '0')}
+        </div>
+
+     {/* Student Identification */}
+<div className="col-span-3">
+  <p className="font-bold text-gray-800 text-sm">
+    {enroll.studentId?.email ? enroll.studentId.email.split('@')[0] : "N/A"}
+  </p>
+  <p className="text-[10px] text-gray-500 uppercase">
+    {enroll.studentId?.firstName || ""} {enroll.studentId?.lastName || ""}
+  </p>
+</div>
+
+        {/* Dept | Year */}
+        <div className="col-span-3 text-center border-l border-gray-50">
+          <p className="text-xs font-bold text-gray-600 uppercase">{enroll.studentId?.department}</p>
+          <p className="text-[9px] text-indigo-500 font-black">BATCH: {enroll.studentId?.year}</p>
+        </div>
+
+        {/* Grade */}
+        <div className="col-span-2 text-center">
+          {enroll.grade ? (
+            <span className="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-black">{enroll.grade}</span>
+          ) : <span className="text-gray-300 text-[10px] italic">-</span>}
+        </div>
+
+        {/* Status Badge */}
+        <div className="col-span-2 flex justify-end pr-4">
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-tighter ${
+            enroll.status === 'approved' 
+              ? 'bg-green-100 text-green-700 border-green-200' 
+              : enroll.status === 'pending_fa' 
+              ? 'bg-purple-100 text-purple-700 border-purple-200' 
+              : enroll.status === 'rejected'
+              ? 'bg-red-100 text-red-700 border-red-200'
+              : 'bg-amber-100 text-amber-700 border-amber-200'
+          }`}>
+            {enroll.status === 'approved' ? 'Enrolled' : 
+            enroll.status === 'pending_fa' ? 'Forwarded to FA' : 
+             enroll.status === 'rejected' ? 'Rejected' : 'Pending Approval'}
+          </span>
+        </div>
+      </div>
+    ))
+  )}
+</div>
+                  </div>
+                </div>
+                </div>
+                </div>
+  );
+};
+
+export default CourseDetail;
