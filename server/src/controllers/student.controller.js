@@ -444,3 +444,79 @@ export const courseAction = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+// Student: view all students in a course (NO grades)
+// STUDENT → view all enrollments of a course (NO grades)
+/*export const getCourseStudentsForStudent = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const enrollments = await Enrollment.find({ courseId })
+      .populate({
+        path: "studentId",
+        select: "firstName lastName email department year"
+      })
+      .populate({
+        path: "courseId",
+        select: "courseCode courseName offeringDept slot session credits instructors"
+      })
+      .lean();
+
+    // ❌ remove grades for privacy
+    const safeData = enrollments.map(e => ({
+      _id: e._id,
+      status: e.status,
+      studentId: e.studentId,
+      courseId: e.courseId
+    }));
+
+    res.json({ students: safeData });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch course students" });
+  }
+};*/
+export const getCourseStudentsForStudent = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const enrollments = await Enrollment.find({ courseId })
+      .populate({
+        path: "studentId",
+        select: "firstName lastName email department year"
+      })
+      .populate({
+        path: "courseId",
+        select: "courseCode courseName offeringDept slot session credits instructors",
+        populate: {
+          path: "instructorId",
+          select: "firstName lastName"
+        }
+      })
+      .lean();
+
+    if (!enrollments.length) {
+      return res.json({ course: null, students: [] });
+    }
+
+    // ✅ extract course once (all enrollments share same course)
+    const course = enrollments[0].courseId;
+
+    // ❌ remove grades
+    const safeStudents = enrollments.map(e => ({
+      _id: e._id,
+      status: e.status,
+      studentId: e.studentId
+    }));
+
+    res.json({
+    course: enrollments[0]?.courseId || null,
+    students: safeData
+    });
+
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch course students" });
+  }
+};
