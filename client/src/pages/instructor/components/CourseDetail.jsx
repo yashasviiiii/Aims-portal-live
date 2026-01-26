@@ -2,8 +2,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { jwtDecode } from "jwt-decode"; // You might need to install this or use your own decoder
 
-const CourseDetail = ({ course, config, onBack }) => {
+// Inside the component:
+const token = localStorage.getItem("token");
+const decoded = token ? jwtDecode(token) : null;
+const currentUserId = decoded?.id;
+
+const CourseDetail = ({ course, config, onBack ,role='instructor'}) => {
   // 1. Unified State Names
   const [courseStudents, setCourseStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -34,9 +40,16 @@ const totalEnrolled = useMemo(() => {
 
   // Fetch students specific to this component's lifecycle
 const fetchStudents = async () => {
+  console.log("Config being sent:", config);
     setLoadingStudents(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${course._id}`, config);
+      // Now that 'role' is in the props above, this logic will work
+      const endpoint = role === 'advisor' 
+        ? `http://localhost:5000/api/fa/course-students/${course._id}` // FA endpoint
+        : `http://localhost:5000/api/instructor/course-students/${course._id}`;
+
+      console.log("Fetching from:", endpoint); // Add this to debug
+        const res = await axios.get(endpoint, config);
       setCourseStudents(res.data.students);
     } catch (err) { 
       console.error("Failed to fetch students:", err); 
@@ -72,17 +85,22 @@ const fetchStudents = async () => {
     if (selectedEnrollments.length === 0) return toast.error("Please select students first");
 
     const tid = toast.loading(`Processing ${selectedEnrollments.length} requests...`);
-    try {
-      await axios.post('http://localhost:5000/api/instructor/enrollment-action', {
-        enrollmentIds: selectedEnrollments,
-        action
-      }, config);
-      toast.success(`Students ${action === 'approve' ? 'forwarded to FA' : 'rejected'}`, { id: tid });
-      setSelectedEnrollments([]);
-      fetchStudents();
-    } catch (err) {
-      toast.error("Action failed", { id: tid });
-    }
+    const url = role === 'advisor' 
+    ? 'http://localhost:5000/api/fa/enrollment-action' 
+    : 'http://localhost:5000/api/instructor/enrollment-action';
+
+  try {
+    await axios.post(url, {
+      enrollmentIds: selectedEnrollments,
+      action
+    }, config);
+
+    toast.success("Action successful", { id: tid });
+    setSelectedEnrollments([]);
+    fetchStudents(); // Refresh the list
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Action failed", { id: tid });
+  }
   };
 
   const downloadGradesTemplate = async (courseId) => {
@@ -149,9 +167,14 @@ const fetchStudents = async () => {
   );
 };
 
+const heading = role === 'advisor' 
+    ? "← Back to All Courses"
+    : "← Back to My Courses";
+
   return (
     <div className="animate-fadeIn">
-      <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline">← Back to My Courses</button>
+      
+      <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline"> {heading}</button>
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100 gap-4">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
                 <div className="flex gap-3 mb-6">
@@ -175,17 +198,20 @@ const fetchStudents = async () => {
   Download Students
 </button>
                   {/* Upload Button */}
-                  <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
-                    {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls"
-                      hidden
-                      onChange={(e) =>
-                        uploadGradesExcel(course._id, e.target.files[0])
-                      }
-                    />
-                  </label>
+                  {/* Only show Upload Button if the user is NOT an advisor */}
+{role !== 'advisor' && (
+  <label className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold cursor-pointer hover:bg-green-700">
+    {uploadingGrades ? "Uploading..." : "Upload Grades Excel"}
+    <input
+      type="file"
+      accept=".xlsx,.xls"
+      hidden
+      onChange={(e) =>
+        uploadGradesExcel(course._id, e.target.files[0])
+      }
+    />
+  </label>
+)}
                 </div>
                 </div>
                 {/* Info Grid */}
@@ -312,20 +338,30 @@ const fetchStudents = async () => {
       <div className="grid grid-cols-12 gap-4 px-6 mb-4 py-3 bg-gray-50 border-b text-[10px] font-bold uppercase text-gray-400 tracking-widest bg-gray-50 py-3 rounded-t-xl border-b">
         <div className="col-span-1 flex justify-center items-center">
           <input 
-            type="checkbox" 
-            className="w-4 h-4 cursor-pointer accent-green-600"
-            onChange={(e) => {
-              // Only select students who are actually pending_instructor from the current filtered list
-              const toSelect = filteredEnrollments
-                .filter(s => s.status === 'pending_instructor')
-                .map(s => s._id);
-              setSelectedEnrollments(e.target.checked ? toSelect : []);
-            }} 
-            checked={
-              selectedEnrollments.length > 0 && 
-              filteredEnrollments.filter(s => s.status === 'pending_instructor').every(s => selectedEnrollments.includes(s._id))
-            }
-          />
+  type="checkbox" 
+  className="w-4 h-4 cursor-pointer accent-green-600"
+  onChange={(e) => {
+    // Determine which status we care about based on the role
+    const targetStatus = role === 'advisor' ? 'pending_fa' : 'pending_instructor';
+    
+    // Only select students who match the target status
+    const toSelect = filteredEnrollments
+      .filter(s => s.status === targetStatus)
+      .map(s => s._id);
+      
+    setSelectedEnrollments(e.target.checked ? toSelect : []);
+  }} 
+  checked={
+    // Dynamic check based on role
+    (() => {
+      const targetStatus = role === 'advisor' ? 'pending_fa' : 'pending_instructor';
+      const relevantStudents = filteredEnrollments.filter(s => s.status === targetStatus);
+      
+      return relevantStudents.length > 0 && 
+             relevantStudents.every(s => selectedEnrollments.includes(s._id));
+    })()
+  }
+/>
         </div>
         <div className="col-span-1 text-center">S.No</div>
         <div className="col-span-3">Roll No & Name</div>
@@ -336,28 +372,37 @@ const fetchStudents = async () => {
       
       {/* Table Body continues here... */}
       <div className="p-2 space-y-2">
-       {loadingStudents ? (
+  {loadingStudents ? (
     <p className="text-center py-10 text-gray-400">Loading students...</p>
   ) : filteredEnrollments.length === 0 ? (
     <p className="text-center py-10 text-gray-400 italic">No enrollment requests found.</p>
   ) : (
-    filteredEnrollments.map((enroll, i) => (
-      <div key={enroll._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border border-gray-100 rounded-xl hover:border-indigo-200 transition-all shadow-sm">
-        
-        {/* Checkbox */}
-        <div className="col-span-1 flex justify-center">
-  {enroll.status === 'pending_instructor' ? (
-    <input 
-      type="checkbox" 
-      className="w-4 h-4 cursor-pointer accent-green-600 rounded"
-      checked={selectedEnrollments.includes(enroll._id)}
-      onChange={() => toggleSelection(enroll._id)}
-    />
-  ) : (
-    /* Visual indicator for non-selectable rows */
-    <div className="w-2 h-2 rounded-full bg-gray-200" title="Action not required"></div>
-  )}
-</div>
+    filteredEnrollments.map((enroll, i) => {
+      // 1. Define what status allows selection based on the current user role
+      const canSelect = role === 'advisor' 
+        ? enroll.status === 'pending_fa' 
+        : enroll.status === 'pending_instructor';
+
+      return (
+        <div key={enroll._id} className="grid grid-cols-12 gap-4 items-center p-4 bg-white border border-gray-100 rounded-xl hover:border-indigo-200 transition-all shadow-sm">
+          
+          {/* Checkbox Section */}
+          <div className="col-span-1 flex justify-center">
+            {canSelect ? (
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 cursor-pointer accent-green-600 rounded"
+                checked={selectedEnrollments.includes(enroll._id)}
+                onChange={() => toggleSelection(enroll._id)}
+              />
+            ) : (
+              /* Visual indicator for rows that are already approved or pending elsewhere */
+              <div 
+                className={`w-2 h-2 rounded-full ${enroll.status === 'approved' ? 'bg-green-400' : 'bg-gray-200'}`} 
+                title={enroll.status === 'approved' ? "Fully Approved" : "Action not required at this stage"}
+              ></div>
+            )}
+          </div>
 
         {/* S.No */}
         <div className="col-span-1 text-center text-gray-300 font-mono text-xs">
@@ -401,7 +446,8 @@ const fetchStudents = async () => {
   </span>
 </div>
       </div>
-    ))
+    );
+    })
   )}
   </div>
   </div>

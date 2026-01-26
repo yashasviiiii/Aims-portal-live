@@ -231,7 +231,7 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="col-span-2 mt-4 hover:bg-indigo-600 text-white py-2 rounded font-bold"
+                className="col-span-2 mt-4 bg-indigo-600 text-white py-2 rounded font-bold"
               >
                 Submit Proposal
               </button>

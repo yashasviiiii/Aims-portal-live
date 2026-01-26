@@ -242,6 +242,15 @@ export const handleInstructorAction = async (req, res) => {
       return res.status(400).json({ message: "No students selected" });
     }
 
+    let newStatus;
+    if (action === 'approve') {
+      newStatus = 'pending_fa'; // Forward to Advisor
+    } else if (action === 'reject') {
+      newStatus = 'rejected';
+    } else {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
     const result = await Enrollment.updateMany(
       { 
         _id: { $in: enrollmentIds },
@@ -255,6 +264,7 @@ export const handleInstructorAction = async (req, res) => {
       count: result.modifiedCount 
     });
   } catch (err) {
+    console.error("Backend Error:", err);
     res.status(500).json({ message: "Action failed" });
   }
 };
