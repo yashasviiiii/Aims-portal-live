@@ -1,223 +1,171 @@
-🎓 AIMS Portal – Academic Information Management System
+#  AIMS Portal – Academic Information Management System
 
-AIMS Portal is a full-stack web application designed to digitize and streamline academic processes such as course enrollment, approvals, transcript generation, and role-based academic management for Students, Instructors, Faculty Advisors, and Admins.
+### Team ID: D15  
+**Team Members:**  
+- Charvi Pahuja (2023CSB1114)  
+- Krishna Agarwal (2023CSB1131)  
+- Tamanna (2023CSB1169)  
+- Yashasvi Chaudhary (2023CSB1174)  
 
+---
 
-🚀 Features
+##  Overview
 
-1. Student
+**AIMS Portal** (Academic Information Management System) is a full-stack web application designed to digitize and streamline key academic processes — from **course enrollment** and **approvals** to **transcript generation** and **role-based academic management**.
 
-•View available courses
+The system offers distinct functionalities for **Students**, **Instructors**, **Faculty Advisors**, and **Admins**, ensuring a seamless academic workflow with automated validations and secure authentication.
 
-•Send enrollment requests
+---
 
-•Students have drop, withdraw course option as well
+##  Features
 
-•Track enrollment status (Pending Instructor → Pending FA → Approved)
+###  Student
+- View available courses.
+- Send enrollment requests.
+- Drop or withdraw from courses.
+- Track enrollment status *(Pending Instructor → Pending FA → Approved)*.
+- View academic records and transcripts.
+- Download transcripts as PDF.
+- Search, filter, and sort courses.
 
-•View academic record & transcript
+### Instructor
+- Add courses with slot clash detection.
+- View enrolled students.
+- Approve or reject enrollment requests (with bulk approval support).
+- Assign a coordinator among instructors.
+- Download student details as Excel, fill in grades offline, and re-upload for automatic grade submission.
 
-•Download transcript (PDF)
+### Faculty Advisor
+- Provide final approval for student enrollments and instructor courses.
+- Optionally act as an instructor when assigned.
 
-•Search, filter, and sort courses
+### Admin
+- Approve profiles for Instructors and Faculty Advisors.
+- Monitor and manage active users.
 
+---
 
-2. Instructor
+## ⚙️ System-Level Features
 
-•Add courses (with slot clash detection)
+- **Role-based access control (RBAC)**
+- **OTP-based signup**
+- **JWT Authentication**
+- **Session control with multi-tab logout**
+- **Protected routes**
+- **RESTful API architecture**
 
-•View enrolled students
+---
 
-•Approve / Reject enrollment requests
+## 🧩 Tech Stack
 
-•Bulk approval support
+###  Frontend
+- React.js  
+- Axios  
+- Tailwind CSS  
 
-•Assign coordinator among instructors
+###  Backend
+- Node.js  
+- Express.js  
+- MongoDB  
+- Mongoose  
 
-•Download students detail in excel, write down the grades and upload the excel sheet directly as grade submission on website, grades would appear in students records.
+### Authentication & Security
+- JWT (JSON Web Tokens)  
+- bcrypt (password hashing)  
+- CORS  
 
+---
 
-3. Faculty Advisor
+## Supporting Libraries
 
-•Final approval authority for enrollments of students as well as courses
+| Package | Purpose |
+|----------|----------|
+| express | Server framework |
+| mongoose | MongoDB ODM |
+| cors | Cross-origin resource sharing |
+| jsonwebtoken | Token-based authentication |
+| bcryptjs | Password hashing |
+| dotenv | Environment variable management |
+| multer | File handling (optional) |
+| nodemon | Development auto-reload |
+| axios | API communication (frontend) |
+| react-router-dom | Frontend routing |
+| tailwindcss | Styling framework |
 
-•Acts as Instructor if assigned
+---
 
+## 🧑‍💻 Prerequisites
 
-4. Admin
+Ensure the following are installed:
 
-•Approve Instructor & Faculty Advisor profiles
+- **Node.js** (v18+ recommended)  
+- **MongoDB** (local or MongoDB Atlas cloud instance)  
+- **Git**
 
-•View active users
-
-
-System Level
-
-•Role-based access control
-
-•OTP based signup
-
-•Protected routes
-
-•JWT Authentication
-
-•Multi-tab logout handling(Session control)
-
-•RESTful APIs
-
-Tech Stack
-
-  Frontend
-  
-    •React.js
-    
-    •Axios
-    
-    •Tailwind CSS
-
-  Backend
-  
-    •Node.js
-    
-    •Express.js
-    
-    •MongoDB
-    
-    •Mongoose
-
-Authentication & Security
-
-•JWT (JSON Web Tokens)
-
-•bcrypt
-
-•CORS
-
-📦 Supporting Libraries
-
-•express
-
-•mongoose
-
-•cors
-
-•jsonwebtoken
-
-•bcryptjs
-
-•dotenv
-
-•multer (for file handling if used)
-
-•nodemon
-
-•axios
-
-•react-router-dom
-
-•tailwindcss
-
-⚙️ Prerequisites
-
-Make sure you have installed:
-
-Node.js (v18+ recommended)
-
-MongoDB (local or cloud MongoDB Atlas)
-
-Git
-
-Check versions:
-
+Check installation versions:
+```bash
 node -v
-
 npm -v
-
 mongod --version
+```
 
-🔧 Installation Steps
+## Installation Steps
+###  Clone the Repository
 
-1️⃣ Clone Repository
-
+```bash
 git clone <repository-url>
-
 cd aims-portal
+```
 
-2️⃣ Install Backend Dependencies
-
+### Install Backend Dependencies
+```bash
 cd server
-
 npm install
+```
 
-3️⃣ Install Frontend Dependencies
-
+### Install Frontend Dependencies
+```bash
 cd ../client
-
 npm install
+```
 
-🔑 Environment Variables
+### Environment Variables
+Create a file named .env inside the server/ directory and add the following entries:
+```bash
+MONGO_URI=
+PORT=
+JWT_SECRET=
+EMAIL_USER=
+EMAIL_PASS=
+```
 
-Create a .env file inside server/
-
-PORT=5000
-
-MONGO_URI=your_mongodb_connection_string
-
-JWT_SECRET=your_secret_key
-
-Example:
-
+### Example .env
+```bash
 MONGO_URI=mongodb://localhost:27017/aims_portal
-
+PORT=5000
 JWT_SECRET=aims123
+EMAIL_USER=example@gmail.com
+EMAIL_PASS=your_email_password
+```
 
-▶️ Running the Project
-
-1. Start Backend
-
-2. cd server
-
-3. npm run dev
-
-4. Server runs on:
-
-http://localhost:5000
-
-5. Start Frontend
-
-6. Open a new terminal:
-
-cd client
-
+## Running the project
+### Starting Backend
+```bash
+cd server
 npm run dev
+```
 
-7. Frontend runs on:
+### Starting Frontend
+```bash
+cd client
+npm run dev
+```
 
-http://localhost:5173
+## Default Workflow
 
-🔐 Default Flow
-
-Admin logs in → Approves Instructor & Faculty Advisor
-
-Instructor adds courses(Course is approved by faculty advisor first and then is available to the students)
-
-Student sends enrollment request
-
-Instructor approves
-
-Faculty Advisor gives final approval
-
-Student sees approved course
-
-🧪 Sample API Type
-
-All APIs follow RESTful Architecture:
-
-GET    /api/student/courses
-
-POST   /api/student/enroll
-
-PUT    /api/instructor/approve
-
-GET    /api/admin/users
-
+- Admin logs in → Approves Instructor & Faculty Advisor profiles.
+- Instructor adds courses → Course approved by Faculty Advisor.
+- Student views available courses → Sends enrollment request.
+- Instructor approves the request.
+- Faculty Advisor gives final approval.
+- Student sees approved course in dashboard and transcript.
