@@ -10,8 +10,9 @@ export const verifyJWT = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-    req.role = decoded.role;
+    req.user = { id: decoded.id, role: decoded.role }; // For new code
+  req.userId = decoded.id;                           // For old code
+  req.role = decoded.role;
     next();
   } catch (err) {
     return res.status(403).json({ message: "Invalid token" });
@@ -26,7 +27,11 @@ export const requireStudent = (req, res, next) => {
 
 export const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!allowedRoles.includes(req.role)) {
+    if (!req.user.id) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      console.log(`Access denied for role: ${req.role}`);
       return res.status(403).json({ 
         message: `Access denied. Required: ${allowedRoles.join(" or ")}` 
       });

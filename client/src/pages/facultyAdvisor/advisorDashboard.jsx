@@ -276,12 +276,14 @@ const AdvisorDashboard = () => {
             fetchStudentsForCourse={fetchStudentsForCourse}
             pendingStudents={pendingStudents}
             handleApproval={handleFinalFAAction}
+            config={config}
           />
         ):(
         
             <CourseDetail 
               course={selectedCourse} 
               config={config} 
+              role="advisor"
               onBack={() => { setSelectedCourse(null); fetchMyCourses(); }} 
             />
           
