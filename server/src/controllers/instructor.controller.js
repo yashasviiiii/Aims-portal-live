@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import mongoose from 'mongoose';
 import Enrollment from '../models/Enrollment.js';
 import Name from "../models/name.js";
 import ExcelJS from "exceljs";
@@ -7,15 +8,19 @@ import Student from "../models/Students.js"
 
 export const instructorDashboard = async (req, res) => {
   try {
-    // 1. Find the profile using the logged-in userId
-    // 2. Use .populate('userId') to fetch firstName and lastName from the Name schema
-    const instructorProfile = await CourseInstructor.findOne({ userId: req.userId })
-      .populate("userId", "firstName lastName email"); 
+    let instructorProfile = await CourseInstructor.findOne({ 
+      userId: new mongoose.Types.ObjectId(req.userId) 
+    }).populate("userId", "firstName lastName email");
 
+    // NEW LOGIC: If no profile exists, create one automatically
     if (!instructorProfile) {
-      return res.status(404).json({ message: "Course Instructor profile not found" });
+      console.log("No profile found. Creating a new one for User:", req.userId);
+      
+      instructorProfile = await CourseInstructor.create({userId: req.userId});
+      
+      // Re-populate to get the names
+      instructorProfile = await instructorProfile.populate("userId", "firstName lastName email");
     }
-
     // 3. Send the human-readable names back to the frontend
     res.status(200).json({
       message: "Course Instructor dashboard accessed",
@@ -393,5 +398,27 @@ export const uploadGradesExcel = async (req, res) => {
       message: "Grade upload failed",
       error: err.message
     });
+  }
+};
+
+export const deleteCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // 1. Delete all enrollments associated with this course
+    await Enrollment.deleteMany({ courseId: courseId });
+
+    // 2. Delete the course itself
+    const deletedCourse = await Course.findByIdAndDelete(courseId);
+
+    if (!deletedCourse) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    res.status(200).json({ 
+      message: "Course and associated enrollments deleted successfully" 
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error during deletion" });
   }
 };
