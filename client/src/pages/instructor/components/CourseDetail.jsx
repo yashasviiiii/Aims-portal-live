@@ -167,6 +167,48 @@ const fetchStudents = async () => {
   );
 };
 
+const handleDeleteCourse = async (courseId) => {
+  // 1. Trigger the confirmation Toast
+  toast((t) => (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-gray-900">
+        Are you sure? This will delete the course and all enrollments permanently.
+      </p>
+      <div className="flex justify-end gap-2 mt-2">
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="px-3 py-1 text-xs font-semibold text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={async () => {
+            toast.dismiss(t.id); // Remove the confirm toast
+            await proceedWithDeletion(courseId); // Execute the actual logic
+          }}
+          className="px-3 py-1 text-xs font-semibold text-white bg-red-600 rounded hover:bg-red-700"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  ), { duration: 5000 });
+};
+
+// 2. The actual logic (moved to a helper to keep code clean)
+const proceedWithDeletion = async (courseId) => {
+  const tid = toast.loading("Deleting course and enrollments...");
+
+  try {
+    await axios.delete(`http://localhost:5000/api/instructor/delete-course/${courseId}`, config);
+    toast.success("Course and all enrollments deleted successfully", { id: tid });
+    onBack(); 
+  } catch (err) {
+    console.error("Delete Error:", err);
+    toast.error(err.response?.data?.message || "Failed to delete course", { id: tid });
+  }
+};
+
 const heading = role === 'advisor' 
     ? "← Back to All Courses"
     : "← Back to My Courses";
@@ -176,7 +218,22 @@ const heading = role === 'advisor'
       
       <button onClick={onBack} className="text-indigo-600 font-bold mb-6 hover:underline"> {heading}</button>
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100 gap-4">
-                <h3 className="text-lg font-bold text-gray-800 mb-4 border-l-4 border-indigo-600 pl-3">Course Details</h3>
+                <div className="flex items-center gap-4"> {/* Container for heading + delete icon */}
+    <h3 className="text-lg font-bold text-gray-800 border-l-4 border-indigo-600 pl-3">
+      Course Details
+    </h3>
+    
+    {/* Delete Icon Button */}
+    <button
+      onClick={() => handleDeleteCourse(course._id)}
+      title="Click on it to delete the course"
+      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    </button>
+  </div>
                 <div className="flex gap-3 mb-6">
                   {/* Download Button */}
                   <button
