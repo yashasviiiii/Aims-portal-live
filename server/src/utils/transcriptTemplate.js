@@ -177,7 +177,6 @@ export const transcriptHTML = ({ student, records, cgpa }) => `
             <th>#</th>
             <th>Course</th>
             <th>Status</th>
-            <th>Category</th>
             <th>Grade</th>
           </tr>
         </thead>
@@ -187,7 +186,6 @@ export const transcriptHTML = ({ student, records, cgpa }) => `
               <td>${i + 1}</td>
             <td>${c.courseCode} | ${c.courseName}</td>
             <td>Approved</td>
-            <td>Core</td>
             <td class="grade">${c.grade ?? "NA"}</td>
             </tr>
           `).join("")}

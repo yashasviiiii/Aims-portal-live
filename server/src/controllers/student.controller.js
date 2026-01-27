@@ -429,7 +429,7 @@ export const courseAction = async (req, res) => {
     }
 
     for (const e of enrollments) {
-      if (["approved", "dropped", "withdrawn"].includes(e.status)) {
+      if (["dropped", "withdrawn"].includes(e.status)) {
         continue; // block invalid transitions
       }
 
