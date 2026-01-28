@@ -1,5 +1,5 @@
 import express from "express";
-import { requireInstructor, verifyJWT } from "../middleware/auth.middleware.js";
+import { requireInstructor, verifyJWT, authorizeRoles } from "../middleware/auth.middleware.js";
 import { 
   instructorDashboard, 
   addCourse, 
@@ -10,7 +10,8 @@ import {
   handleInstructorAction,
   getAllInstructors,
   downloadGradesTemplate,
-  uploadGradesExcel
+  uploadGradesExcel,
+  deleteCourse
 } from "../controllers/instructor.controller.js";
 import multer from "multer";
 
@@ -42,7 +43,7 @@ router.get(
 router.post("/handle-student-request", verifyJWT, requireInstructor, handleStudentRequest);
 router.get("/course-students/:courseId", verifyJWT, requireInstructor, getCourseEnrollments);
 router.post("/enrollment-action", verifyJWT,requireInstructor, handleInstructorAction);
-
+router.delete("/delete-course/:courseId", verifyJWT, authorizeRoles("COURSE_INSTRUCTOR", "FA"), deleteCourse);
 router.get("/download-grades/:courseId", verifyJWT, downloadGradesTemplate);
 router.post("/upload-grades/:courseId", verifyJWT, upload.single("file"), uploadGradesExcel);
 

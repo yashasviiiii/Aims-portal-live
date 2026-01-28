@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import StudentNavbar from "../../components/studentNavbar";
 import axios from "axios";
+import toast from 'react-hot-toast';
 import CoursesSection from "../../components/CoursesSection";
 import { getStudentRecord } from "../../api/student";
 
@@ -35,6 +36,7 @@ const StudentDashboard = () => {
       } catch (err) {
         const backupEmail = localStorage.getItem("userEmail");
         setRoll(backupEmail ? backupEmail.split("@")[0] : "Guest");
+        toast.error("Could not fetch latest profile data.");
       }
     };
     fetchData();
@@ -50,6 +52,7 @@ const StudentDashboard = () => {
         const res = await getStudentRecord();
         setRecord(res.data);
       } catch (err) {
+        toast.error("Failed to load academic records.");
         console.error("Failed to fetch record:", err);
       } finally {
         setLoadingRecord(false);
@@ -171,6 +174,7 @@ const calculateCGPA = (records) => {
                 <h1 className="text-xl font-bold border-b pb-2">Student Profile</h1>
                 <button
                 onClick={async () => {
+                  const tid = toast.loading("Generating your transcript...");
                   const token = localStorage.getItem("token");
 
                   const res = await fetch(
@@ -191,6 +195,7 @@ const calculateCGPA = (records) => {
                   a.click();
 
                   window.URL.revokeObjectURL(url);
+                  toast.success("Transcript downloaded successfully!", { id: tid });
                 }}
 
                   className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700"
@@ -275,7 +280,6 @@ const calculateCGPA = (records) => {
                         <th className="p-3 text-left w-12">#</th>
                         <th className="p-3 text-left">Course Details</th>
                         <th className="p-3">Status</th>
-                        <th className="p-3">Category</th>
                         <th className="p-3">Grade</th>
                       </tr>
                     </thead>
@@ -293,9 +297,6 @@ const calculateCGPA = (records) => {
                             <span className="px-2 py-0.5 rounded-full bg-gray-100 text-[10px] font-bold uppercase text-gray-600 border">
                               {c.status}
                             </span>
-                          </td>
-                          <td className="p-3 text-center text-gray-600">
-                            {c.category}
                           </td>
                           <td className="p-3 text-center font-black text-indigo-600 text-base">
                             {c.status === "withdrawn" ? "W" : (c.grade || "N/A")}

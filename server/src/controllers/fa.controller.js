@@ -203,21 +203,42 @@ export const getEnrollingCourses = async (req, res) => {
     res.status(500).json({ message: "Error fetching enrolling courses" });
   }
 };
+export const getCourseStudents = async (req, res) => {
+  try {
+    const { courseId } = req.params;
 
+    // Remove any { status: "..." } filters to get the full list
+    const students = await Enrollment.find({ courseId: courseId })
+      .populate("studentId", "firstName lastName email department year")
+      .lean();
+
+    res.status(200).json({ success: true, students });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch student list" });
+  }
+};
 export const handleFinalFAAction = async (req, res) => {
   try {
     const { enrollmentIds, action } = req.body;
-    // Final step: moving to 'approved' or 'rejected'
-    const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    await Enrollment.updateMany(
-      { _id: { $in: enrollmentIds } },
+    let newStatus;
+    if (action === 'approve') {
+      newStatus = 'approved'; // Final Enrollment
+    } else if (action === 'reject') {
+      newStatus = 'rejected';
+    }
+
+    const result = await Enrollment.updateMany(
+      { 
+        _id: { $in: enrollmentIds },
+        status: 'pending_fa' // Safety check: Advisor processes FA pending items
+      },
       { $set: { status: newStatus } }
     );
 
-    res.json({ message: `Enrollments successfully ${newStatus}` });
+    res.json({ message: "Success", count: result.modifiedCount });
   } catch (err) {
-    res.status(500).json({ message: "Final approval failed" });
+    res.status(500).json({ message: "Advisor action failed" });
   }
 };
 // backend/controllers/fa.controller.js

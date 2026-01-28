@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import StudentCourseDetail from "../pages/student/StudentCourseDetail";
 
 const CourseSection = ({ rollNumber }) => {
   const [courses, setCourses] = useState([]);
-  const [filteredCourses, setFilteredCourses] = useState([]);
   const [selected, setSelected] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({ slot: "", dept: "", credits: "", status: "" });
@@ -22,7 +22,7 @@ const CourseSection = ({ rollNumber }) => {
       const res = await axios.get('http://localhost:5000/api/student/courses', config);
       setCourses(res.data);
     } catch (err) { 
-      console.error("Fetch failed"); 
+      toast.error("Failed to load courses. Please refresh."); 
     } finally { 
       setLoading(false); 
     }
@@ -55,66 +55,47 @@ const CourseSection = ({ rollNumber }) => {
     return [];
   };
 
+// This replaces the old useEffect and the filteredCourses state
+const filteredCourses = React.useMemo(() => {
+  // 1. Logic for Status Priority (Your existing logic)
+  const getStatusPriority = (course) => {
+    const status = getUnifiedStatus(course);
+    switch (status) {
+      case "approved": return 1;
+      case "pending_instructor": return 2;
+      case "pending_fa": return 3;
+      case "not_enrolled": return 4;
+      case "rejected": return 5;
+      case "dropped": return 6;
+      case "withdrawn": return 7;
+      default: return 8;
+    }
+  };
 
+  // 2. Filter Logic (Your existing logic)
+  let result = courses.filter(c => {
+    const searchStr = searchTerm.toLowerCase();
+    const matchesSearch = 
+      c.courseName.toLowerCase().includes(searchStr) ||
+      c.courseCode.toLowerCase().includes(searchStr) ||
+      (c.instructorDisplay && c.instructorDisplay.toLowerCase().includes(searchStr));
 
-  // --- SEARCH, FILTER, AND SORT LOGIC ---
-  useEffect(() => {
-    // 1. Define Status Priority for Sorting
-    // Priority: Credited (1) > Enrolling (2) > Others
-    const getStatusPriority = (course) => {
-      const status = getUnifiedStatus(course);
-      switch (status) {
-        case "approved": return 1;
-        case "pending_instructor": return 2;
-        case "pending_fa": return 3;
-        case "not_enrolled": return 4;
-        case "rejected": return 5;
-        case "dropped": return 6;
-        case "withdrawn": return 7;
-        default: return 8;
-      }
-    };
+    const matchesDept = !filters.dept || c.offeringDept === filters.dept;
+    const matchesSlot = !filters.slot || c.slot === filters.slot;
+    const matchesCredits = !filters.credits || c.credits.toString() === filters.credits;
+    const matchesStatus = !filters.status || getUnifiedStatus(c) === filters.status;
 
+    return matchesSearch && matchesDept && matchesSlot && matchesCredits && matchesStatus;
+  });
 
-
-    // 2. Filter Logic
-    let result = courses.filter(c => {
-      // Search Logic: Name, Code, or Professor Names (using instructorDisplay from backend)
-      const searchStr = searchTerm.toLowerCase();
-      const matchesSearch = 
-        c.courseName.toLowerCase().includes(searchStr) ||
-        c.courseCode.toLowerCase().includes(searchStr) ||
-        (c.instructorDisplay && c.instructorDisplay.toLowerCase().includes(searchStr));
-
-      // Category Filters
-      const matchesDept = !filters.dept || c.offeringDept === filters.dept;
-      const matchesSlot = !filters.slot || c.slot === filters.slot;
-      const matchesCredits = !filters.credits || c.credits.toString() === filters.credits;
-      const matchesStatus =
-        !filters.status ||
-        getUnifiedStatus(c) === filters.status;
-
-
-
-      return matchesSearch && matchesDept && matchesSlot && matchesCredits && matchesStatus;
-    });
-
-    // 3. Multi-Level Sort Logic
-    result.sort((a, b) => {
-      // Level 1: Sort by Status Priority
-      const priorityA = getStatusPriority(a);
-      const priorityB = getStatusPriority(b);
-
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-
-      // Level 2: Sort Alphabetically by Course Name if status is same
-      return a.courseName.localeCompare(b.courseName);
-    });
-
-    setFilteredCourses(result);
-  }, [searchTerm, filters, courses]);
+  // 3. Sort Logic (Your existing logic)
+  return result.sort((a, b) => {
+    const priorityA = getStatusPriority(a);
+    const priorityB = getStatusPriority(b);
+    if (priorityA !== priorityB) return priorityA - priorityB;
+    return a.courseName.localeCompare(b.courseName);
+  });
+}, [searchTerm, filters, courses]); // This re-calculates automatically when these change
 
   const handleToggle = (id) => {
     setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -135,7 +116,7 @@ const handleAction = async (action) => {
   if (!action) return;
 
   if (selected.length === 0) {
-    return alert("Select at least one course");
+    return toast.error("Please select at least one course");
   }
 
   const invalid = selected.some(id => {
@@ -146,9 +127,10 @@ const handleAction = async (action) => {
   });
 
   if (invalid) {
-    return alert("Selected action not allowed for one or more courses");
+    return toast.error(`One or more selected courses cannot be ${action}ed`);
   }
 
+  const tid = toast.loading(`Processing ${action} request...`);
   try {
     await axios.post(
       'http://localhost:5000/api/student/course-action',
@@ -156,17 +138,17 @@ const handleAction = async (action) => {
       config
     );
 
-    alert(`${action.toUpperCase()} request sent successfully!`);
+    toast.success(`${action.toUpperCase()}ED successfully!`, { id: tid });
     setSelected([]);
     fetchCourses();
   } catch (err) {
-    alert(err.response?.data?.message || "Action failed");
+    toast.error(err.response?.data?.message || "Action failed", { id: tid });
   }
 };
 
 
   const isSelectable = (course) =>
-    !["withdrawn", "rejected", "dropped", "approved"].includes(
+    !["withdrawn", "rejected", "dropped"].includes(
       getUnifiedStatus(course)
     );
 
@@ -196,6 +178,8 @@ const handleAction = async (action) => {
         course={selectedCourse}
         onBack={() => {
           setSelectedCourse(null);
+          setSearchTerm("");
+          setFilters({ slot: "", dept: "", credits: "", status: "" });
           fetchCourses();
         }}
       />
@@ -289,16 +273,16 @@ const handleAction = async (action) => {
               <tr key={course._id} onClick={() => setSelectedCourse(course)} className="border-t hover:bg-indigo-50/30 transition-colors cursor-pointer">
 
                 <td className="p-4">
-                {!["approved", "dropped", "withdrawn"].includes(course.enrollmentStatus) && (
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 rounded text-indigo-600"
-                    checked={selected.includes(course._id)}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() => handleToggle(course._id)}
-                  />
-                )}
-                </td>
+                    {isSelectable(course) && (
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                        checked={selected.includes(course._id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => handleToggle(course._id)}
+                      />
+                    )}
+                  </td>
                 <td className="p-4 text-gray-400 font-mono">{idx + 1}</td>
                 <td className="p-4 font-bold text-indigo-600 font-mono">{course.courseCode}</td>
                 <td className="p-4">

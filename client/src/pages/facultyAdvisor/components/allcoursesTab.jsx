@@ -7,11 +7,11 @@ const AllCoursesTab = ({
   loadingEnrolling, 
   fetchStudentsForCourse, 
   pendingStudents, 
-  handleApproval 
+  handleApproval,
+  config
 }) => {
   // Local state to track which course is currently being viewed
   const [selectedCourse, setSelectedCourse] = useState(null);
-
   // Helper to handle going back to the list
   const handleBack = () => {
     setSelectedCourse(null);
@@ -37,8 +37,10 @@ const AllCoursesTab = ({
       ) : (
         /* VIEW 2: THE DETAIL */
         <CourseDetail 
-          course={selectedCourse} 
+          course={selectedCourse}
           onBack={handleBack}
+          role="advisor"
+          config={config}
           // Pass Advisor-specific student data and actions
           // These props must match what your CourseDetail.jsx expects
           students={pendingStudents[selectedCourse._id] || []}

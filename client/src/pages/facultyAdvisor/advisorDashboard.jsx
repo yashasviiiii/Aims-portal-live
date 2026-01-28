@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdvisorNavbar from '../../components/advisorNavbar';
 import axios from 'axios';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Component Tabs
 import HomeTab from './components/homeTab';
@@ -169,14 +170,10 @@ const AdvisorDashboard = () => {
     const idsToProcess = singleId ? [singleId] : selectedEnrollments;
 
     if (idsToProcess.length === 0) {
-      return alert("Please select at least one student.");
+      return toast.error("Please select at least one student.");
     }
 
-    const confirmMsg = action === 'approve'
-      ? `Are you sure you want to finalize enrollment for ${idsToProcess.length} student(s)?`
-      : `Reject ${idsToProcess.length} selected student(s)?`;
-
-    if (!window.confirm(confirmMsg)) return;
+    const tid = toast.loading("Processing approval...");
 
     try {
       const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
@@ -184,7 +181,7 @@ const AdvisorDashboard = () => {
         action: action
       }, config);
 
-      alert(response.data.message);
+      toast.success(response.data.message);
 
       if (!singleId) setSelectedEnrollments([]);
 
@@ -193,26 +190,24 @@ const AdvisorDashboard = () => {
         fetchStudentsForCourse(targetCourseId);
       }
     } catch (err) {
-      console.error("FA Approval Error:", err);
-      alert("Failed to process approval.");
+      toast.error("Failed to process approval.");
     }
   };
 
   const handleProposalAction = async (action) => {
     if (selectedIds.length === 0) return alert("Please select at least one course.");
-    if (!window.confirm(`Confirm ${action} for selected courses?`)) return;
-
+    const tid = toast.loading(`Performing ${action}...`);
     try {
       await axios.post('http://localhost:5000/api/fa/handle-proposals', {
         courseIds: selectedIds,
         action: action
       }, config);
-      alert(`Courses ${action}ed successfully.`);
-      setSelectedIds([]);
-      fetchProposedProposals();
-    } catch (err) {
-      alert("Operation failed.");
-    }
+      toast.success(`Courses ${action}ed successfully.`, { id: tid });
+    setSelectedIds([]);
+    fetchProposedProposals();
+  } catch (err) {
+    toast.error("Operation failed.", { id: tid });
+  }
   };
 
   const toggleStudentSelection = (enrollId) => {
@@ -276,12 +271,14 @@ const AdvisorDashboard = () => {
             fetchStudentsForCourse={fetchStudentsForCourse}
             pendingStudents={pendingStudents}
             handleApproval={handleFinalFAAction}
+            config={config}
           />
         ):(
         
             <CourseDetail 
               course={selectedCourse} 
               config={config} 
+              role="advisor"
               onBack={() => { setSelectedCourse(null); fetchMyCourses(); }} 
             />
           
