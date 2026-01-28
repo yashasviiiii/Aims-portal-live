@@ -30,8 +30,8 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/instructor-dashboard" element={ <InstructorDashboard />} />
+        <Route path="/student-dashboard" element={<ProtectedRoute role="STUDENT"> <StudentDashboard /> </ProtectedRoute>} />
+        <Route path="/instructor-dashboard" element={<ProtectedRoute role="COURSE_INSTRUCTOR"><InstructorDashboard /> </ProtectedRoute>} />
         <Route path="/fa-dashboard" element={<ProtectedRoute role="FA"> <AdvisorDashboard /> </ProtectedRoute>}/>
         <Route path="/admin" element={<ProtectedRoute role="ADMIN"> <AdminDashboard /> </ProtectedRoute> }/>
       </Routes>
