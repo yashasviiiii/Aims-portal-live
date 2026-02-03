@@ -27,7 +27,7 @@ const StudentDashboard = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:5000/api/student/dashboard",
+          "/api/student/dashboard",
           config
         );
         if (response.data?.student?.rollNumber) {
@@ -178,7 +178,7 @@ const calculateCGPA = (records) => {
                   const token = localStorage.getItem("token");
 
                   const res = await fetch(
-                    "http://localhost:5000/api/student/download-transcript",
+                    "/api/student/download-transcript",
                     {
                       headers: {
                         Authorization: `Bearer ${token}`

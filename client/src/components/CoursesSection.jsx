@@ -19,7 +19,7 @@ const CourseSection = ({ rollNumber }) => {
 
   const fetchCourses = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/student/courses', config);
+      const res = await axios.get('/api/student/courses', config);
       setCourses(res.data);
     } catch (err) { 
       toast.error("Failed to load courses. Please refresh."); 
@@ -133,7 +133,7 @@ const handleAction = async (action) => {
   const tid = toast.loading(`Processing ${action} request...`);
   try {
     await axios.post(
-      'http://localhost:5000/api/student/course-action',
+      '/api/student/course-action',
       { courseIds: selected, action },
       config
     );

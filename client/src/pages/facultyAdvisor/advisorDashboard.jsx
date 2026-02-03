@@ -63,7 +63,7 @@ const AdvisorDashboard = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
+        const response = await axios.get('/api/instructor/dashboard', config);
         setInstructorData(response.data.instructor);
       } catch (error) {
         console.error("Profile Fetch Error:", error);
@@ -106,7 +106,7 @@ const AdvisorDashboard = () => {
 
   // --- Effect 4: Fetch Instructor Directory ---
   useEffect(() => {
-    axios.get("http://localhost:5000/api/instructor/all", config)
+    axios.get("/api/instructor/all", config)
       .then(res => setAllInstructors(res.data))
       .catch(() => {});
   }, []);
@@ -116,7 +116,7 @@ const AdvisorDashboard = () => {
   const fetchMyCourses = async () => {
     setLoadingCourses(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/instructor/my-courses', config);
+      const res = await axios.get('/api/instructor/my-courses', config);
       setMyCourses(res.data);
     } catch (err) {
       console.error("Failed to fetch courses");
@@ -128,7 +128,7 @@ const AdvisorDashboard = () => {
   const fetchAllEnrolling = async () => {
     setLoadingEnrolling(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/fa/all-enrolling-courses', config);
+      const res = await axios.get('/api/fa/all-enrolling-courses', config);
       setEnrollingCourses(res.data);
     } catch (err) {
       console.error("Failed to fetch enrolling courses");
@@ -140,7 +140,7 @@ const AdvisorDashboard = () => {
   const fetchStudentsForCourse = async (courseId) => {
     setLoadingEnrolling(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/instructor/course-students/${courseId}`, config);
+      const res = await axios.get(`/api/instructor/course-students/${courseId}`, config);
       setPendingStudents(prev => ({
         ...prev,
         [courseId]: res.data
@@ -155,7 +155,7 @@ const AdvisorDashboard = () => {
   const fetchProposedProposals = async () => {
     setLoadingProposals(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/fa/proposed-proposals', config);
+      const res = await axios.get('/api/fa/proposed-proposals', config);
       setAllProposedCourses(res.data);
     } catch (err) {
       console.error("Failed to fetch proposals");
@@ -176,7 +176,7 @@ const AdvisorDashboard = () => {
     const tid = toast.loading("Processing approval...");
 
     try {
-      const response = await axios.post('http://localhost:5000/api/fa/final-approval', {
+      const response = await axios.post('/api/fa/final-approval', {
         enrollmentIds: idsToProcess,
         action: action
       }, config);
@@ -198,7 +198,7 @@ const AdvisorDashboard = () => {
     if (selectedIds.length === 0) return alert("Please select at least one course.");
     const tid = toast.loading(`Performing ${action}...`);
     try {
-      await axios.post('http://localhost:5000/api/fa/handle-proposals', {
+      await axios.post('/api/fa/handle-proposals', {
         courseIds: selectedIds,
         action: action
       }, config);

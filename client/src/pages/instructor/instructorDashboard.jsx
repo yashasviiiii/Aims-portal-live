@@ -28,7 +28,7 @@ const InstructorDashboard = () => {
 useEffect(() => {
   const fetchProfile = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/instructor/dashboard', config);
+      const response = await axios.get('/api/instructor/dashboard', config);
       
       // This will now contain instructor.firstName and instructor.lastName 
       // because of the .populate() we added to the backend above
@@ -64,7 +64,7 @@ useEffect(() => {
 
   // to fetch all instructors 
   useEffect(() => {
-  axios.get("http://localhost:5000/api/instructor/all", config)
+  axios.get("/api/instructor/all", config)
     .then(res => setAllInstructors(res.data))
     .catch(() => {});
 }, []);
@@ -79,7 +79,7 @@ useEffect(() => {
   const fetchMyCourses = async () => {
     setLoadingCourses(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/instructor/my-courses', config);
+      const res = await axios.get('/api/instructor/my-courses', config);
       setMyCourses(res.data);
     } catch (err) {
       console.error("Failed to fetch courses");

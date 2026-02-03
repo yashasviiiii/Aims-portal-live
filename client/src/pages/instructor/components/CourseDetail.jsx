@@ -45,8 +45,8 @@ const fetchStudents = async () => {
     try {
       // Now that 'role' is in the props above, this logic will work
       const endpoint = role === 'advisor' 
-        ? `http://localhost:5000/api/fa/course-students/${course._id}` // FA endpoint
-        : `http://localhost:5000/api/instructor/course-students/${course._id}`;
+        ? `/api/fa/course-students/${course._id}` // FA endpoint
+        : `/api/instructor/course-students/${course._id}`;
 
       console.log("Fetching from:", endpoint); // Add this to debug
         const res = await axios.get(endpoint, config);
@@ -86,8 +86,8 @@ const fetchStudents = async () => {
 
     const tid = toast.loading(`Processing ${selectedEnrollments.length} requests...`);
     const url = role === 'advisor' 
-    ? 'http://localhost:5000/api/fa/enrollment-action' 
-    : 'http://localhost:5000/api/instructor/enrollment-action';
+    ? '/api/fa/enrollment-action' 
+    : '/api/instructor/enrollment-action';
 
   try {
     await axios.post(url, {
@@ -107,7 +107,7 @@ const fetchStudents = async () => {
     let tid;
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/instructor/download-grades/${courseId}`,
+        `/api/instructor/download-grades/${courseId}`,
         {
           ...config,
           responseType: "blob"
@@ -142,7 +142,7 @@ const fetchStudents = async () => {
     try {
       setUploadingGrades(true);
       await axios.post(
-        `http://localhost:5000/api/instructor/upload-grades/${courseId}`,
+        `/api/instructor/upload-grades/${courseId}`,
         formData,
         {
           ...config,
@@ -200,7 +200,7 @@ const proceedWithDeletion = async (courseId) => {
   const tid = toast.loading("Deleting course and enrollments...");
 
   try {
-    await axios.delete(`http://localhost:5000/api/instructor/delete-course/${courseId}`, config);
+    await axios.delete(`/api/instructor/delete-course/${courseId}`, config);
     toast.success("Course and all enrollments deleted successfully", { id: tid });
     onBack(); 
   } catch (err) {

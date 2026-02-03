@@ -16,7 +16,7 @@ const StudentCourseDetail = ({ course, onBack }) => {
   const fetchStudents = async () => {
   try {
     const res = await axios.get(
-      `http://localhost:5000/api/student/course-students/${course._id}`,
+      `/api/student/course-students/${course._id}`,
       config
     );
 

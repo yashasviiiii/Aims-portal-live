@@ -31,7 +31,7 @@ const CourseForm = ({ instructorData, allInstructors, config, onSuccess }) => {
                 };
 
                 try {
-                  const res = await axios.post('http://localhost:5000/api/instructor/add-course', payload, config);
+                  const res = await axios.post('/api/instructor/add-course', payload, config);
                   if (res.status === 200 || res.status === 201) {
                       toast.success("Course submitted for Faculty Advisor approval", { id: toastId });
                    try {
