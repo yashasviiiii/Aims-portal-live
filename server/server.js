@@ -84,8 +84,12 @@ app.get(/^((?!\/api).)*$/, (req, res) => {
 
 
 // ================= START SERVER =================
-connectDB();
-
-app.listen(PORT, () => {
-  console.log(`Server started at port ${PORT}`);
-});
+connectDB()
+.then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server started at port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("DB connection failed:", err);
+  });
