@@ -75,10 +75,10 @@ app.get("/api/admin/test", verifyJWT, requireInstructor, (req, res) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// serve static files
+// serve static assets
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
-app.get("/*", (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
