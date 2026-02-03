@@ -3,11 +3,16 @@ dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 import express from 'express';
 import dotenv from 'dotenv';
-import healthRoutes from "./src/routes/health.routes.js";
-import authRoutes from "./src/routes/auth.routes.js";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+
+import healthRoutes from "./src/routes/health.routes.js";
+import authRoutes from "./src/routes/auth.routes.js";
+import studentRoutes from "./src/routes/student.routes.js";
+import faRoutes from "./src/routes/fa.routes.js";
+import instructorRoutes from "./src/routes/instructor.routes.js";
+import adminRoutes from "./src/routes/admin.routes.js";
 
 import {
   verifyJWT,
@@ -15,11 +20,6 @@ import {
   requireFA,
   requireInstructor
 } from "./src/middleware/auth.middleware.js";
-
-import studentRoutes from "./src/routes/student.routes.js";
-import faRoutes from "./src/routes/fa.routes.js";
-import instructorRoutes from "./src/routes/instructor.routes.js";
-import adminRoutes from "./src/routes/admin.routes.js";
 
 import { connectDB } from './config/db.js';
 
@@ -75,9 +75,10 @@ app.get("/api/admin/test", verifyJWT, requireInstructor, (req, res) => {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// serve static files
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
-app.get("*", (req, res) => {
+app.get("/*", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
